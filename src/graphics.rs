@@ -1,22 +1,24 @@
 use embedded_graphics::{
-    draw_target::DrawTargetExt,
     geometry::{Point, Size},
-    image::{Image, ImageRaw, ImageRawBE, ImageRawLE},
-    mock_display::MockDisplay,
-    mono_font::{
-        ascii::{FONT_10X20, FONT_6X10, FONT_6X9, FONT_7X14},
-        MonoTextStyle, MonoTextStyleBuilder,
-    },
-    pixelcolor::{BinaryColor, Rgb565, RgbColor},
+    mono_font::{ascii::FONT_6X10, MonoTextStyleBuilder},
+    pixelcolor::BinaryColor,
     prelude::*,
     primitives::{
-        Circle, Line, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StrokeAlignment, Triangle,
+        Circle, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StrokeAlignment, Triangle,
     },
-    text::{Alignment, Baseline, Text, TextStyle, TextStyleBuilder},
+    text::{Alignment, Text},
 };
 use ssd1306::{mode::BufferedGraphicsMode, prelude::*, Ssd1306};
 
 use crate::datetime::*;
+
+trait Page {
+    fn draw();
+}
+struct FeedPage {}
+impl Page for FeedPage {
+    fn draw() {}
+}
 
 pub fn draw_display<S>(display: &mut Ssd1306<impl WriteOnlyDataCommand, S, BufferedGraphicsMode<S>>)
 where

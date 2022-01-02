@@ -12,15 +12,16 @@ use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306};
 
 use std::{
     net::{TcpListener, TcpStream},
-    ops::Sub,
-    sync::Arc
+    sync::Arc,
 };
 
 mod datetime;
+mod feed;
 mod graphics;
 mod wifi;
+mod https_client;
 
-use crate::{datetime::*, graphics::*, wifi::*};
+use crate::{datetime::*, feed::*, graphics::*, wifi::*};
 
 fn main() -> Result<()> {
     // Temporary. Will disappear once ESP-IDF 4.4 is released, but for now it is necessary to call this function once,
@@ -38,6 +39,9 @@ fn main() -> Result<()> {
     let default_nvs = Arc::new(EspDefaultNvs::new()?);
     let _wifi = wifi(netif_stack, sys_loop_stack, default_nvs)?; // Do not drop until enf of program.
 
+    let _sntp = initialize_time()?;
+    info!("Current local time: {}", get_datetime()?);
+
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
     let i2c0 = peripherals.i2c0;
@@ -53,7 +57,6 @@ fn main() -> Result<()> {
     };
 
     let master = esp_idf_hal::i2c::Master::new(i2c0, i2c_master_pins, config).unwrap();
-
     let interface = I2CDisplayInterface::new(master);
 
     let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
@@ -65,105 +68,13 @@ fn main() -> Result<()> {
         .spawn(move || draw_display(&mut display))
         .unwrap();
 
-    let _sntp = initialize_time()?;
-
-    info!("Current local time: {}", get_datetime()?);
-
-    // if let Ok(local) = time::OffsetDateTime::now_local() {
-    //     info!("Local time: {}", local);
-    // }
 
     // requesot()?;
 
-    rss_feed()?;
-
-    Ok(())
-}
-
-fn rss_feed() -> Result<()> {
-    let url = std::ffi::CString::new("https://www.tagesschau.de/").expect("Invalid URL CString.");
-
-    // No verification for now. Make sure it's enabled in menuconfig.
-    let tls_config = esp_idf_sys::esp_tls_cfg {
-        ..Default::default()
-    };
-    let mut response = Vec::new();
-
-    unsafe {
-        info!("Create new tls connection");
-        let tls = esp_idf_sys::esp_tls_conn_http_new(url.as_ptr(), &tls_config as *const _);
-
-        if tls == std::ptr::null_mut() {
-            info!("connection failed!");
-            return Ok(());
-        } else {
-            info!("connection established!");
-        }
-
-        let mut written_bytes = 0;
-        let request =
-            b"GET /newsticker.rdf HTTP/1.1\r\nHost: www.tagesschau.de\r\nConnection: close\r\n\r\n";
-
-        while written_bytes < request.len() {
-            let ret = esp_idf_sys::esp_tls_conn_write(
-                tls,
-                request.as_ptr().add(written_bytes) as _,
-                request.len().sub(written_bytes) as u32,
-            );
-            written_bytes = written_bytes + ret as usize;
-        }
-
-        info!("HTTPS request sent!");
-
-        {
-            let mut buf = [0 as u8; 512];
-
-            loop {
-                let ret =
-                    esp_idf_sys::esp_tls_conn_read(tls, buf.as_mut_ptr() as _, (buf.len()) as _);
-
-                if ret == 0 {
-                    info!("Connection closed...");
-                    break;
-                } else {
-                    response.extend_from_slice(&buf[..ret as _]);
-                }
-            }
-        }
-
-        info!("Delete connection!");
-        esp_idf_sys::esp_tls_conn_delete(tls);
-    }
-
-    let index = response.iter().position(|x| *x == b'<').unwrap();
-
-    info!("Print out all titles!");
-
-    let parser = xml::reader::EventReader::new(&response[index..]);
-    let mut title_follows = false;
-    for e in parser {
-        match e {
-            Ok(xml::reader::XmlEvent::StartElement { name, .. }) => {
-                if name.local_name == "title" {
-                    title_follows = true;
-                }
-            }
-            Ok(xml::reader::XmlEvent::EndElement { name }) => {
-                if name.local_name == "title" {
-                    title_follows = false;
-                }
-            }
-            Ok(xml::reader::XmlEvent::Characters(content)) => {
-                if title_follows {
-                    println!("{}", content);
-                }
-            }
-            Err(e) => {
-                println!("Parse error: {}", e);
-                break;
-            }
-            _ => {}
-        }
+    let feed = rss_feed()?;
+    info!("New feed: {}", feed.title);
+    for line in &feed.headlines {
+        info!("{}", line);
     }
 
     Ok(())

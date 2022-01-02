@@ -37,6 +37,7 @@ time = { version = "0.3.5", features = ["macros", "formatting"] }
 embedded-graphics = "0.7"
 embedded-graphics-core = "0.3"
 ssd1306 = "0.7"
+url = "2.2.2"
 
 [build-dependencies]
 embuild = "0.27"
