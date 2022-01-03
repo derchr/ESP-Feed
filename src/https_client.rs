@@ -4,12 +4,12 @@ use log::*;
 use std::{io::Read, ops::Sub};
 use url::Url;
 
-pub struct HttpsConnection {
+pub struct HttpsClient {
     tls: *mut esp_tls,
 }
 
-impl HttpsConnection {
-    pub fn new(url: &Url) -> Result<HttpsConnection> {
+impl HttpsClient {
+    pub fn new(url: &Url) -> Result<HttpsClient> {
         let url_string = std::ffi::CString::new(url.as_str()).expect("Invalid CString.");
 
         // No verification for now. Make sure it's enabled in menuconfig.
@@ -31,11 +31,11 @@ impl HttpsConnection {
 
         send_request(tls, url)?;
 
-        Ok(HttpsConnection { tls })
+        Ok(HttpsClient { tls })
     }
 }
 
-impl Read for HttpsConnection {
+impl Read for HttpsClient {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let ret = unsafe {
             esp_idf_sys::esp_tls_conn_read(self.tls, buf.as_mut_ptr() as _, (buf.len()) as _)
@@ -45,7 +45,7 @@ impl Read for HttpsConnection {
     }
 }
 
-impl Drop for HttpsConnection {
+impl Drop for HttpsClient {
     fn drop(&mut self) {
         info!("Delete connection!");
         unsafe { esp_idf_sys::esp_tls_conn_delete(self.tls) };

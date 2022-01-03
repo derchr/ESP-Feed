@@ -19,7 +19,7 @@ pub fn rss_feed(url: &Url) -> Result<Feed> {
 
     let config = xml::ParserConfig::new().trim_whitespace(true);
 
-    let mut https_connection = BufReader::new(HttpsConnection::new(&url)?);
+    let mut https_connection = BufReader::new(HttpsClient::new(&url)?);
     https_connection.read_until(b'<', &mut Vec::new())?;
     let mut concat = (&[b'<'][..]).chain(https_connection);
 
