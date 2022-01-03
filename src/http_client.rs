@@ -1,3 +1,6 @@
+use log::*;
+use url::Url;
+
 unsafe extern "C" fn event_handler(
     ev: *mut esp_idf_sys::esp_http_client_event,
 ) -> esp_idf_sys::esp_err_t {
@@ -14,16 +17,19 @@ unsafe extern "C" fn event_handler(
     esp_idf_sys::ESP_OK as _
 }
 
-    // For http.
-    // let config = esp_idf_sys::esp_http_client_config_t {
-    //     url: url.as_ptr(),
-    //     auth_type: esp_idf_sys::esp_http_client_auth_type_t_HTTP_AUTH_TYPE_BASIC,
-    //     event_handler: Some(event_handler),
-    //     ..Default::default()
-    // };
+pub fn connect(url: &Url) {
+    let url_string = std::ffi::CString::new(url.as_str()).expect("Invalid CString.");
 
+    let config = esp_idf_sys::esp_http_client_config_t {
+        url: url_string.as_ptr(),
+        auth_type: esp_idf_sys::esp_http_client_auth_type_t_HTTP_AUTH_TYPE_BASIC,
+        event_handler: Some(event_handler),
+        ..Default::default()
+    };
 
-    // http stuff...
-    // let client = esp_idf_sys::esp_http_client_init(&config as *const _);
-    // esp_idf_sys::esp_http_client_perform(client);
-    // esp_idf_sys::esp_http_client_cleanup(client);
+    unsafe {
+        let client = esp_idf_sys::esp_http_client_init(&config as *const _);
+        esp_idf_sys::esp_http_client_perform(client);
+        esp_idf_sys::esp_http_client_cleanup(client);
+    }
+}

@@ -17,15 +17,14 @@ pub fn wifi(
     info!("Wifi created, about to scan");
 
     let ap_infos = wifi.scan()?;
+    let our_ap = ap_infos.into_iter().find(|a| a.ssid == SSID);
 
-    let ours = ap_infos.into_iter().find(|a| a.ssid == SSID);
-
-    let channel = if let Some(ours) = ours {
+    let channel = if let Some(our_ap) = our_ap {
         info!(
             "Found configured access point {} on channel {}",
-            SSID, ours.channel
+            SSID, our_ap.channel
         );
-        Some(ours.channel)
+        Some(our_ap.channel)
     } else {
         info!(
             "Configured access point {} not found during scanning, will go with unknown channel",

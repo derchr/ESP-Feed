@@ -1,25 +1,21 @@
-use anyhow::Result;
-use log::*;
-
 #[allow(unused_imports)]
 use esp_idf_sys; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 
+use anyhow::Result;
+use log::*;
+
 use esp_idf_hal::{peripherals::Peripherals, prelude::*};
 use esp_idf_svc::{netif::*, nvs::*, sysloop::*};
-use smol::{self, prelude::*};
 
 use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306};
 
-use std::{
-    net::{TcpListener, TcpStream},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 mod datetime;
 mod feed;
 mod graphics;
-mod wifi;
 mod https_client;
+mod wifi;
 
 use crate::{datetime::*, feed::*, graphics::*, wifi::*};
 
@@ -66,62 +62,71 @@ fn main() -> Result<()> {
     std::thread::Builder::new()
         .stack_size(40960)
         .spawn(move || draw_display(&mut display))
-        .unwrap();
+        .expect("Could not create display thread.");
 
 
-    // requesot()?;
+    let url = url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url");
+    if let Ok(feed) = rss_feed(&url) {
+        info!("New feed: {}", feed.title);
+        for line in &feed.headlines {
+            info!("{}", line);
+        }
+    }
 
-    let feed = rss_feed()?;
-    info!("New feed: {}", feed.title);
-    for line in &feed.headlines {
-        info!("{}", line);
+    let url =
+        url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml").expect("Invalid Url");
+    if let Ok(feed) = rss_feed(&url) {
+        info!("New feed: {}", feed.title);
+        for line in &feed.headlines {
+            info!("{}", line);
+        }
     }
 
     Ok(())
 }
 
-#[allow(unused)]
-fn request() -> Result<()> {
-    async fn test_tcp_bind() -> smol::io::Result<()> {
-        /// Echoes messages from the client back to it.
-        async fn echo(stream: smol::Async<TcpStream>) -> smol::io::Result<()> {
-            // smol::io::copy(&stream, &mut &stream).await?;
+// #[allow(unused)]
+// fn request() -> Result<()> {
+//     async fn test_tcp_bind() -> smol::io::Result<()> {
+//         /// Echoes messages from the client back to it.
+//         async fn echo(stream: smol::Async<TcpStream>) -> smol::io::Result<()> {
+//             // smol::io::copy(&stream, &mut &stream).await?;
 
-            loop {
-                let mut buf = [0; 512];
-                match (&stream).read(&mut buf).await {
-                    Ok(0) => break,
-                    Ok(n) => (&stream).write_all(&buf[..n]).await?,
-                    Err(_) => (),
-                }
-            }
+//             loop {
+//                 let mut buf = [0; 512];
+//                 match (&stream).read(&mut buf).await {
+//                     Ok(0) => break,
+//                     Ok(n) => (&stream).write_all(&buf[..n]).await?,
+//                     Err(_) => (),
+//                 }
+//             }
 
-            Ok(())
-        }
+//             Ok(())
+//         }
 
-        // Create a listener.
-        let listener = smol::Async::<TcpListener>::bind(([0, 0, 0, 0], 8081))?;
+//         // Create a listener.
+//         let listener = smol::Async::<TcpListener>::bind(([0, 0, 0, 0], 8081))?;
 
-        // Accept clients in a loop.
-        loop {
-            let (stream, peer_addr) = listener.accept().await?;
-            info!("Accepted client: {}", peer_addr);
+//         // Accept clients in a loop.
+//         loop {
+//             let (stream, peer_addr) = listener.accept().await?;
+//             info!("Accepted client: {}", peer_addr);
 
-            // Spawn a task that echoes messages from the client back to it.
-            smol::spawn(echo(stream)).detach();
-        }
-    }
+//             // Spawn a task that echoes messages from the client back to it.
+//             smol::spawn(echo(stream)).detach();
+//         }
+//     }
 
-    info!("About to bind a simple echo service to port 8081 using async (smol-rs)!");
+//     info!("About to bind a simple echo service to port 8081 using async (smol-rs)!");
 
-    esp_idf_sys::esp!(unsafe {
-        esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
-            max_fds: 5,
-            ..Default::default()
-        })
-    })?;
+//     esp_idf_sys::esp!(unsafe {
+//         esp_idf_sys::esp_vfs_eventfd_register(&esp_idf_sys::esp_vfs_eventfd_config_t {
+//             max_fds: 5,
+//             ..Default::default()
+//         })
+//     })?;
 
-    smol::block_on(test_tcp_bind()).unwrap();
+//     smol::block_on(test_tcp_bind()).unwrap();
 
-    Ok(())
-}
+//     Ok(())
+// }

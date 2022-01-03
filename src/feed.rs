@@ -1,5 +1,7 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use log::*;
+use std::io::{BufRead, BufReader, Read};
+use url::Url;
 
 use crate::https_client::*;
 
@@ -8,18 +10,21 @@ pub struct Feed {
     pub headlines: Vec<String>,
 }
 
-pub fn rss_feed() -> Result<Feed> {
-    let url = url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url");
-    let response = https_request(&url)?;
-
-    // Don't parse the HTTP response stuff...
-    let index = response.iter().position(|x| *x == b'<').unwrap();
-
-    let parser = xml::reader::EventReader::new(&response[index..]);
-    let mut title = String::new();
-    let mut headlines = Vec::new();
+pub fn rss_feed(url: &Url) -> Result<Feed> {
     let mut first_title = true;
     let mut title_follows = false;
+    let mut title_count = 0;
+    let mut title = String::new();
+    let mut headlines = Vec::new();
+
+    let config = xml::ParserConfig::new().trim_whitespace(true);
+
+    let mut https_connection = BufReader::new(HttpsConnection::new(&url)?);
+    https_connection.read_until(b'<', &mut Vec::new())?;
+    let mut concat = (&[b'<'][..]).chain(https_connection);
+
+    let parser = xml::reader::EventReader::new_with_config(&mut concat, config);
+
     for e in parser {
         match e {
             Ok(xml::reader::XmlEvent::StartElement { name, .. }) => {
@@ -40,12 +45,17 @@ pub fn rss_feed() -> Result<Feed> {
                 }
 
                 if title_follows {
+                    title_count += 1;
                     headlines.push(content);
+                }
+
+                if title_count == 10 {
+                    break;
                 }
             }
             Err(e) => {
                 warn!("Parse error: {}", e);
-                break;
+                bail!("Parse error: {}", e);
             }
             _ => {}
         }
