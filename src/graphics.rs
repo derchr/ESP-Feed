@@ -8,23 +8,51 @@ use embedded_graphics::{
     },
     text::{Alignment, Text},
 };
+
 use ssd1306::{mode::BufferedGraphicsMode, prelude::*, Ssd1306};
 
 use crate::datetime::*;
 
-trait Page {
-    fn draw();
-}
-struct FeedPage {}
-impl Page for FeedPage {
-    fn draw() {}
+pub trait Page {
+    fn draw<D>(&self, display: &mut D) -> Result<(), D::Error>
+    where
+        D: DrawTarget<Color = BinaryColor> + Dimensions,
+        D::Color: From<BinaryColor>;
 }
 
-pub fn draw_display<S>(display: &mut Ssd1306<impl WriteOnlyDataCommand, S, BufferedGraphicsMode<S>>)
+// pub struct FeedPage {}
+
+// impl Page for FeedPage {
+//     fn draw<D>(display: &mut D) -> Result<(), D::Error>
+//     where
+//         D: DrawTarget<Color = BinaryColor> + Dimensions,
+//         D::Color: From<BinaryColor>,
+//     {
+//         Ok(())
+//     }
+// }
+
+pub fn draw_page<S>(display: &mut Ssd1306<impl WriteOnlyDataCommand, S, BufferedGraphicsMode<S>>)
 where
     S: DisplaySize,
 {
+    let page = ExamplePage {};
+
     loop {
+        page.draw(display).unwrap();
+        display.flush().unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(150));
+    }
+}
+
+pub struct ExamplePage {}
+
+impl Page for ExamplePage {
+    fn draw<D>(&self, display: &mut D) -> Result<(), D::Error>
+    where
+        D: DrawTarget<Color = BinaryColor> + Dimensions,
+        D::Color: From<BinaryColor>,
+    {
         let thin_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
         let thick_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 3);
         let border_stroke = PrimitiveStyleBuilder::new()
@@ -45,8 +73,7 @@ where
         display
             .bounding_box()
             .into_styled(border_stroke)
-            .draw(display)
-            .unwrap();
+            .draw(display)?;
 
         // Draw a triangle.
         Triangle::new(
@@ -55,20 +82,17 @@ where
             Point::new(16 + 8, yoffset),
         )
         .into_styled(thin_stroke)
-        .draw(display)
-        .unwrap();
+        .draw(display)?;
 
         // Draw a filled square
         Rectangle::new(Point::new(52, yoffset), Size::new(16, 16))
             .into_styled(fill)
-            .draw(display)
-            .unwrap();
+            .draw(display)?;
 
         // Draw a circle with a 3px wide stroke.
         Circle::new(Point::new(88, yoffset), 17)
             .into_styled(thick_stroke)
-            .draw(display)
-            .unwrap();
+            .draw(display)?;
 
         let text = "embedded-graphics";
         Text::with_alignment(
@@ -77,8 +101,7 @@ where
             character_style_text,
             Alignment::Center,
         )
-        .draw(display)
-        .unwrap();
+        .draw(display)?;
 
         if let Ok(datetime) = get_datetime() {
             let format =
@@ -90,12 +113,9 @@ where
                 character_style_text,
                 Alignment::Center,
             )
-            .draw(display)
-            .unwrap();
+            .draw(display)?;
         }
 
-        display.flush().expect("Could not flush display.");
-
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        Ok(())
     }
 }

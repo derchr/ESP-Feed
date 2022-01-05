@@ -15,6 +15,7 @@ mod feed;
 mod graphics;
 mod https_client;
 mod wifi;
+mod weather;
 
 use crate::{datetime::*, display::*, feed::*, graphics::*, wifi::*};
 
@@ -32,23 +33,19 @@ fn main() -> Result<()> {
     let netif_stack = Arc::new(EspNetifStack::new()?);
     let sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
     let default_nvs = Arc::new(EspDefaultNvs::new()?);
-    let _wifi = wifi(netif_stack, sys_loop_stack, default_nvs)?; // Do not drop until enf of program.
+    let _wifi = wifi(netif_stack, sys_loop_stack, default_nvs)?;
 
     let _sntp = initialize_time()?;
     info!("Current local time: {}", get_datetime()?);
 
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
-    let i2c0 = peripherals.i2c0;
 
-    let scl = pins.gpio27.into_output().unwrap();
-    let sda = pins.gpio26.into_output().unwrap();
-
-    let mut display = get_display(scl, sda, i2c0);
+    let mut display = get_display(pins.gpio27, pins.gpio26, peripherals.i2c0);
 
     std::thread::Builder::new()
         .stack_size(40960)
-        .spawn(move || draw_display(&mut display))
+        .spawn(move || draw_page(&mut display))
         .expect("Could not create display thread.");
 
     let url = url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url");
@@ -67,6 +64,35 @@ fn main() -> Result<()> {
             info!("{}", line);
         }
     }
+
+    fn httpd() -> Result<esp_idf_svc::httpd::Server> {
+        use embedded_svc::httpd::registry::*;
+        use embedded_svc::httpd::*;
+        use anyhow::bail;
+
+        let server = esp_idf_svc::httpd::ServerRegistry::new()
+            .at("/")
+            .get(|_| Ok("Hello from Rust!".into()))?
+            .at("/simple")
+            .get(|_| Ok(include_str!("simple.html").into()))?
+            .at("/foo")
+            .get(|_| bail!("Boo, something happened!"))?
+            .at("/bar")
+            .get(|_| {
+                Response::new(403)
+                    .status_message("No permissions")
+                    .body("You have no permissions to access this page".into())
+                    .into()
+            })?
+            .at("/panic")
+            .get(|_| panic!("User requested a panic!"))?;
+    
+        server.start(&Default::default())
+    }
+
+    let _server = httpd().unwrap();
+
+    std::thread::sleep(std::time::Duration::from_secs(60));
 
     Ok(())
 }

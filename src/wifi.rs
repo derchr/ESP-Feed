@@ -26,7 +26,7 @@ pub fn wifi(
         );
         Some(our_ap.channel)
     } else {
-        info!(
+        warn!(
             "Configured access point {} not found during scanning, will go with unknown channel",
             SSID
         );

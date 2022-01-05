@@ -7,6 +7,7 @@ use time::*;
 pub fn initialize_time() -> Result<esp_idf_svc::sntp::EspSntp> {
     let sntp = esp_idf_svc::sntp::EspSntp::new_default()?;
 
+    // TODO remove
     while sntp.get_sync_status() != esp_idf_svc::sntp::SyncStatus::Completed {}
 
     let unixtime = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
