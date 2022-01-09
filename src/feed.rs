@@ -1,9 +1,12 @@
 use anyhow::{bail, Result};
+use embedded_svc::{
+    http::client::{Client, Request},
+    io::StdIO,
+};
+use esp_idf_svc::http::client::EspHttpClient;
 use log::*;
-use std::io::{BufRead, BufReader, Read};
+use std::io::BufReader;
 use url::Url;
-
-use crate::https_client::*;
 
 pub struct Feed {
     pub title: String,
@@ -19,11 +22,12 @@ pub fn rss_feed(url: &Url) -> Result<Feed> {
 
     let config = xml::ParserConfig::new().trim_whitespace(true);
 
-    let mut https_connection = BufReader::new(HttpsClient::new(&url)?);
-    https_connection.read_until(b'<', &mut Vec::new())?;
-    let mut concat = (&[b'<'][..]).chain(https_connection);
+    let mut http_client = EspHttpClient::new_default()?;
+    let request = http_client.get(url)?.submit()?;
 
-    let parser = xml::reader::EventReader::new_with_config(&mut concat, config);
+    let mut request_reader = BufReader::new(StdIO(&request));
+
+    let parser = xml::reader::EventReader::new_with_config(&mut request_reader, config);
 
     for e in parser {
         match e {

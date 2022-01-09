@@ -38,4 +38,4 @@ ESP_IDF_SDKCONFIG_DEFAULTS = { value = "./sdkconfig.defaults", relative = true }
 # Enables the esp-idf-sys "native" build feature to build against ESP-IDF upcoming (v4.4)
 #ESP_IDF_VERSION = { value = "branch:release/v4.4" }
 # Enables the esp-idf-sys "native" build feature to build against ESP-IDF master (v5.0)
-ESP_IDF_VERSION = { value = "master" }
+# ESP_IDF_VERSION = { value = "master" }

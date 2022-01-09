@@ -41,7 +41,7 @@ where
     loop {
         page.draw(display).unwrap();
         display.flush().unwrap();
-        std::thread::sleep(std::time::Duration::from_millis(150));
+        std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }
 

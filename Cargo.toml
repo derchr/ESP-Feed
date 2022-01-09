@@ -10,7 +10,7 @@ resolver = "2"
 #polling = { git = "https://github.com/esp-rs-compat/polling" }
 #socket2 = { git = "https://github.com/esp-rs-compat/socket2" }
 getrandom = { version = "0.2", git = "https://github.com/esp-rs-compat/getrandom.git" }
-esp-idf-sys = { git  = "https://github.com/derchr/esp-idf-sys.git" }
+#esp-idf-sys = { git  = "https://github.com/derchr/esp-idf-sys.git" }
 
 [profile.release]
 opt-level = "s"
@@ -20,16 +20,17 @@ debug = true # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
 
 [features]
-default = ["native"]
+default = ["native", "experimental"]
 native = ["esp-idf-sys/native"]
+experimental = ["esp-idf-svc/experimental", "esp-idf-hal/experimental", "embedded-svc/experimental"]
 
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
 log = "0.4"
-esp-idf-sys = { version = "0.28", features = ["binstart"] }
-esp-idf-svc = "0.34"
-embedded-svc = "0.15"
-esp-idf-hal = "0.30"
+esp-idf-sys = { version = "0.29", features = ["binstart"] }
+esp-idf-svc = "0.35"
+embedded-svc = "0.16"
+esp-idf-hal = "0.31"
 embedded-hal = "0.2"
 #smol = "1.2.5"
 xml-rs = "0.8.4"
@@ -39,7 +40,9 @@ embedded-graphics-core = "0.3"
 embedded-layout = "0.2.0"
 ssd1306 = "0.7"
 url = "2.2.2"
+serde = "1.0"
+serde_json = "1.0"
 
 [build-dependencies]
-embuild = "0.27"
+embuild = "0.28"
 anyhow = "1"
