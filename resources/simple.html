@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        h1 {
+            color: red;
+        }
+
+        p {
+            color: blue;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Hello World!</h1>
+
+    <p>Dies ist eine Webseite, die der ESP32 bereitstellt!</p>
+
+    <label for="file">Entwicklungsfortschritt:</label><br>
+    <progress id="file" value="32" max="100"> 32% </progress><br><br>
+    
+    <form method="post" id="sampleform">
+        <h2>Sample form</h2>
+        <div class="form-row">
+            <label for="fname">First name:</label><br>
+            <input type="text" id="fname" name="fname" required><br>
+        </div>
+        <div class="form-row">
+            <label for="lname">Last name:</label><br>
+            <input type="text" id="lname" name="lname" required>
+        </div>
+        <div class="form-row">
+            <input type="submit" id="submit-button">
+        </div>
+    </form>
+    
+    <p id="response"></p>
+    
+    <script>
+        const submit_form = (ev) => {
+            ev.preventDefault();
+
+            let form_data = {
+                fname: document.getElementById('fname').value,
+                lname: document.getElementById('lname').value
+            };
+
+            let xhr = new XMLHttpRequest();
+            let url = "/request";
+
+            xhr.open("POST", url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    console.log(xhr.responseText);
+                    document.getElementById('response').innerHTML = xhr.responseText;
+                }
+            };
+
+            xhr.send(JSON.stringify(form_data));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('submit-button').addEventListener('click', submit_form);
+        });
+    </script>
+</body>
+
+</html>
