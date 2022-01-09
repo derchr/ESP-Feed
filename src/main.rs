@@ -138,9 +138,9 @@ fn main() -> Result<()> {
 
         let server = esp_idf_svc::httpd::ServerRegistry::new()
             .at("/")
-            .get(|_| Ok(include_str!("settings.html").into()))?
+            .get(|_| Ok(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/resources/settings.html")).into()))?
             .at("/simple")
-            .get(|_| Ok(include_str!("simple.html").into()))?
+            .get(|_| Ok(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/resources/simple.html")).into()))?
             .at("/foo")
             .get(|_| bail!("Boo, something happened!"))?
             .at("/bar")
@@ -158,7 +158,7 @@ fn main() -> Result<()> {
                 Response::new(200)
                     .content_type("image/x-icon")
                     .body(embedded_svc::httpd::Body::Bytes(
-                        include_bytes!("favicon.ico").to_vec(),
+                        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/resources/favicon.ico")).to_vec(),
                     ))
                     .into()
             })?
