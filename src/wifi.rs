@@ -11,20 +11,21 @@ pub fn wifi(
     netif_stack: Arc<EspNetifStack>,
     sys_loop_stack: Arc<EspSysLoopStack>,
     default_nvs: Arc<EspDefaultNvs>,
+    ap_mode: bool,
 ) -> Result<EspWifi> {
     let mut wifi = EspWifi::new(netif_stack, sys_loop_stack, default_nvs)?;
 
     info!("Wifi created, about to scan");
 
-    let ap_infos = wifi.scan()?;
-    let our_ap = ap_infos.into_iter().find(|a| a.ssid == SSID);
+    let ap_info_list = wifi.scan()?;
+    let ap_info = ap_info_list.into_iter().find(|a| a.ssid == SSID);
 
-    let channel = if let Some(our_ap) = our_ap {
+    let channel = if let Some(ap_info) = ap_info {
         info!(
             "Found configured access point {} on channel {}",
-            SSID, our_ap.channel
+            SSID, ap_info.channel
         );
-        Some(our_ap.channel)
+        Some(ap_info.channel)
     } else {
         warn!(
             "Configured access point {} not found during scanning, will go with unknown channel",
@@ -33,19 +34,24 @@ pub fn wifi(
         None
     };
 
-    wifi.set_configuration(&Configuration::Mixed(
-        ClientConfiguration {
+    let conf = if ap_mode {
+        Configuration::AccessPoint(AccessPointConfiguration {
+            ssid: "ESP-Feed".into(),
+            channel: channel.unwrap_or(1),
+            auth_method: AuthMethod::WPA2Personal,
+            password: "38294446".into(),
+            ..Default::default()
+        })
+    } else {
+        Configuration::Client(ClientConfiguration {
             ssid: SSID.into(),
             password: PASS.into(),
             channel,
             ..Default::default()
-        },
-        AccessPointConfiguration {
-            ssid: "aptest".into(),
-            channel: channel.unwrap_or(1),
-            ..Default::default()
-        },
-    ))?;
+        })
+    };
+
+    wifi.set_configuration(&conf)?;
 
     info!("Wifi configuration set, about to get status");
 
@@ -53,8 +59,8 @@ pub fn wifi(
 
     if let Status(
         ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(ip_settings))),
-        ApStatus::Started(ApIpStatus::Done),
-    ) = status
+        _,
+    ) = &status
     {
         info!("Wifi connected!");
         info!(
@@ -63,8 +69,10 @@ pub fn wifi(
             ip_settings.subnet.to_string(),
             ip_settings.dns
         );
-    } else {
-        bail!("Unexpected Wifi status: {:?}", status);
+    }
+
+    if let Status(_, ApStatus::Started(ApIpStatus::Done)) = &status {
+        info!("Accesspoint configured!");
     }
 
     Ok(wifi)

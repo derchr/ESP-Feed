@@ -12,47 +12,51 @@ use embedded_graphics::{
 use ssd1306::{mode::BufferedGraphicsMode, prelude::*, Ssd1306};
 
 use crate::datetime::*;
+use crate::display::Display;
 
-pub trait Page {
-    fn draw<D>(&self, display: &mut D) -> Result<(), D::Error>
-    where
-        D: DrawTarget<Color = BinaryColor> + Dimensions,
-        D::Color: From<BinaryColor>;
-}
+// static border_stroke: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuilder::new()
+//     .stroke_color(BinaryColor::On)
+//     .stroke_width(3)
+//     .stroke_alignment(StrokeAlignment::Inside)
+//     .build();
 
-// pub struct FeedPage {}
-
-// impl Page for FeedPage {
-//     fn draw<D>(display: &mut D) -> Result<(), D::Error>
-//     where
-//         D: DrawTarget<Color = BinaryColor> + Dimensions,
-//         D::Color: From<BinaryColor>,
-//     {
-//         Ok(())
-//     }
-// }
-
-pub fn draw_page<S>(display: &mut Ssd1306<impl WriteOnlyDataCommand, S, BufferedGraphicsMode<S>>)
-where
-    S: DisplaySize,
-{
-    let page = ExamplePage {};
-
+pub fn draw_page(display: &mut Display, page: Box<dyn Page<Display>>) {
     loop {
         page.draw(display).unwrap();
         display.flush().unwrap();
+        // std::thread::sleep(std::time::Duration::from_secs(0xFFFF_FFFF_FFFF_FFFF));
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }
 
-pub struct ExamplePage {}
+pub trait Page<D> : Send
+where
+    D: DrawTarget<Color = BinaryColor> + Dimensions,
+    D::Color: From<BinaryColor>,
+{
+    fn draw(&self, display: &mut D) -> Result<(), D::Error>;
+}
 
-impl Page for ExamplePage {
-    fn draw<D>(&self, display: &mut D) -> Result<(), D::Error>
-    where
-        D: DrawTarget<Color = BinaryColor> + Dimensions,
-        D::Color: From<BinaryColor>,
-    {
+pub struct FeedPage;
+pub struct ExamplePage;
+pub struct ConfigPage;
+
+impl<D> Page<D> for FeedPage
+where
+    D: DrawTarget<Color = BinaryColor> + Dimensions,
+    D::Color: From<BinaryColor>,
+{
+    fn draw(&self, display: &mut D) -> Result<(), D::Error> {
+        Ok(())
+    }
+}
+
+impl<D> Page<D> for ExamplePage
+where
+    D: DrawTarget<Color = BinaryColor> + Dimensions,
+    D::Color: From<BinaryColor>,
+{
+    fn draw(&self, display: &mut D) -> Result<(), D::Error> {
         let thin_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
         let thick_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 3);
         let border_stroke = PrimitiveStyleBuilder::new()
@@ -115,6 +119,41 @@ impl Page for ExamplePage {
             )
             .draw(display)?;
         }
+
+        Ok(())
+    }
+}
+
+impl<D> Page<D> for ConfigPage
+where
+    D: DrawTarget<Color = BinaryColor> + Dimensions,
+    D::Color: From<BinaryColor>,
+{
+    fn draw(&self, display: &mut D) -> Result<(), D::Error> {
+        let border_stroke = PrimitiveStyleBuilder::new()
+            .stroke_color(BinaryColor::On)
+            .stroke_width(3)
+            .stroke_alignment(StrokeAlignment::Inside)
+            .build();
+
+        let character_style_text = MonoTextStyleBuilder::new()
+            .font(&FONT_6X10)
+            .text_color(BinaryColor::On)
+            .background_color(BinaryColor::Off)
+            .build();
+
+        display
+            .bounding_box()
+            .into_styled(border_stroke)
+            .draw(display)?;
+
+        Text::with_alignment(
+            "ESP-Feed\nSetup Mode\nSSID: \"ESP-Feed\"\nPassword: \"38294446\"\nIP: 192.168.71.1",
+            display.bounding_box().center() - Point::new(0, 17),
+            character_style_text,
+            Alignment::Center,
+        )
+        .draw(display)?;
 
         Ok(())
     }
