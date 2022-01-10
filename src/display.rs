@@ -1,15 +1,17 @@
 use esp_idf_hal::{gpio, i2c, prelude::*};
 use ssd1306::{mode::BufferedGraphicsMode, prelude::*, I2CDisplayInterface, Ssd1306};
 
+pub type Display = Ssd1306<
+    I2CInterface<i2c::Master<i2c::I2C0, gpio::Gpio26<gpio::Unknown>, gpio::Gpio27<gpio::Unknown>>>,
+    DisplaySize128x64,
+    BufferedGraphicsMode<DisplaySize128x64>,
+>;
+
 pub fn get_display(
     scl: gpio::Gpio27<gpio::Unknown>,
     sda: gpio::Gpio26<gpio::Unknown>,
     i2c: i2c::I2C0,
-) -> Ssd1306<
-    I2CInterface<i2c::Master<i2c::I2C0, gpio::Gpio26<gpio::Unknown>, gpio::Gpio27<gpio::Unknown>>>,
-    DisplaySize128x64,
-    BufferedGraphicsMode<DisplaySize128x64>,
-> {
+) -> Display {
     let i2c_master_pins = esp_idf_hal::i2c::MasterPins { sda, scl };
 
     let config = esp_idf_hal::i2c::config::MasterConfig {

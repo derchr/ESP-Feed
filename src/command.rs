@@ -1,0 +1,4 @@
+enum Command {
+    SaveConfig(()),
+    SwitchPage
+}
