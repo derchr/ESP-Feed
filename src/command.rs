@@ -1,4 +1,4 @@
-enum Command {
+pub enum Command {
     SaveConfig(()),
     SwitchPage
 }
