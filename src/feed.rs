@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use embedded_svc::{
     http::client::{Client, Request},
     io::StdIO,
@@ -12,6 +12,43 @@ pub struct Feed {
     pub title: String,
     pub headlines: Vec<String>,
 }
+pub struct FeedController {
+    current_feeds: Vec<Feed>,
+    urls: Vec<Url>,
+}
+
+impl FeedController {
+    pub fn new() -> Self {
+        Self {
+            current_feeds: Vec::new(),
+            urls: Vec::new(),
+        }
+    }
+
+    pub fn retrieve_feeds(&mut self) -> Result<()> {
+        self.current_feeds.clear();
+
+        for url in &self.urls {
+            if let Ok(feed) = rss_feed(&url) {
+                info!("New feed: {}", feed.title);
+                for line in &feed.headlines {
+                    info!("{}", line);
+                }
+    
+                self.current_feeds.push(feed);
+            } else {
+                warn!("Could not retrieve/parse feed {}", url);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn set_urls(&mut self, urls: &[Url]) {
+        self.urls.clear();
+        self.urls.extend_from_slice(urls);
+    }
+}
 
 pub fn rss_feed(url: &Url) -> Result<Feed> {
     let mut first_title = true;
@@ -22,7 +59,7 @@ pub fn rss_feed(url: &Url) -> Result<Feed> {
 
     let config = xml::ParserConfig::new().trim_whitespace(true);
 
-    let mut http_client = EspHttpClient::new_default()?;
+    let mut http_client = EspHttpClient::new_default().context("Failed to create HTTP client.")?;
     let request = http_client.get(url)?.submit()?;
 
     let mut request_reader = BufReader::new(StdIO(&request));
@@ -58,7 +95,7 @@ pub fn rss_feed(url: &Url) -> Result<Feed> {
                 }
             }
             Err(e) => {
-                warn!("Parse error: {}", e);
+                warn!("Parse error: {}", e); // TODO remove (log errors when handling!)
                 bail!("Parse error: {}", e);
             }
             _ => {}
