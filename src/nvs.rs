@@ -1,33 +1,35 @@
-use embedded_svc::storage::Storage;
+use crate::state::WifiConfig;
+use anyhow::{Context, Result};
+use embedded_svc::{storage::Storage, wifi::Wifi};
+use esp_idf_svc::{nvs::EspDefaultNvs, nvs_storage::EspNvsStorage};
+use std::sync::Arc;
 
-    // info!("Open storage!");
-    // let mut nvs_storage =
-    //     esp_idf_svc::nvs_storage::EspNvsStorage::new_default(default_nvs, "esp_feed", true)
-    //         .expect("Failed to open NVS storage.");
+pub struct NvsController {
+    storage: EspNvsStorage,
+}
 
-    // if let Ok(vec) = nvs_storage.get_raw("my_key") {
-    //     println!("{:?}", vec);
-    // }
+impl NvsController {
+    pub fn new(default_nvs: Arc<EspDefaultNvs>) -> Result<Self> {
+        Ok(Self {
+            storage: EspNvsStorage::new_default(default_nvs, "esp_feed", true)
+                .context("Failed to open NVS storage.")?,
+        })
+    }
 
-    // let my_obj = MyObject {
-    //     data: "Hallo Welt!".into(),
-    //     len: 12,
-    //     flags: Box::new(0x100),
-    //     valid: Some(true),
-    //     world: Matter::Air(5.123213),
-    // };
+    pub fn store_wifi_config(&mut self, wifi_config: &WifiConfig) -> Result<()> {
+        self.storage
+            .put("wifi_config", wifi_config)
+            .context("Could not store wifi config into NVS")?;
 
-    // nvs_storage.put("my_key", &my_obj).unwrap_or_else(|e| {
-    //     warn!("Could not store key: {:?}", e);
-    //     false
-    // });
+        Ok(())
+    }
 
-    // if let Ok(vec) = nvs_storage.get_raw("my_key") {
-    //     println!("{:?}", vec);
-    //     println!("{}", std::str::from_utf8(&(vec.unwrap())).unwrap());
-    // }
+    pub fn get_wifi_config(&self) -> Result<WifiConfig> {
+        let config = self
+            .storage
+            .get("wifi_config")?
+            .context("Could not read wifi config from NVS")?;
 
-    // if let Ok(e) = nvs_storage.get("my_key") {
-    //     let s: MyObject = e.unwrap();
-    //     println!("Value: {:?}", s);
-    // }
+        Ok(config)
+    }
+}

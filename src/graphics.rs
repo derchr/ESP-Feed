@@ -1,3 +1,5 @@
+use crate::{state::State, datetime, definitions, display::Display, feed::Feed};
+use anyhow::Result;
 use embedded_graphics::{
     geometry::{Point, Size},
     mono_font::{ascii::FONT_6X10, MonoTextStyleBuilder},
@@ -8,48 +10,58 @@ use embedded_graphics::{
     },
     text::{Alignment, Text},
 };
-
 use embedded_text::{style::TextBoxStyleBuilder, TextBox};
-
-use ssd1306::{mode::BufferedGraphicsMode, prelude::*, Ssd1306};
-
-use crate::datetime::*;
-use crate::display::Display;
-
-// static border_stroke: PrimitiveStyle<BinaryColor> = PrimitiveStyleBuilder::new()
-//     .stroke_color(BinaryColor::On)
-//     .stroke_width(3)
-//     .stroke_alignment(StrokeAlignment::Inside)
-//     .build();
-
-pub fn draw_page(display: &mut Display, page: Box<dyn Page<Display>>) {
-    loop {
-        page.draw(display).unwrap();
-        display.flush().unwrap();
-        // std::thread::sleep(std::time::Duration::from_secs(0xFFFF_FFFF_FFFF_FFFF));
-        std::thread::sleep(std::time::Duration::from_millis(1000));
-    }
-}
-
-pub trait Page<D>: Send
-where
-    D: DrawTarget<Color = BinaryColor> + Dimensions,
-    D::Color: From<BinaryColor>,
-{
-    fn draw(&self, display: &mut D) -> Result<(), D::Error>;
-}
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 pub struct FeedPage;
 pub struct ExamplePage;
 pub struct ConfigPage;
+
+pub enum PageType {
+    FeedPage,
+    ExamplePage,
+    ConfigPage,
+}
+
+pub fn draw_pages(display: &mut Display, state: Arc<Mutex<State>>) -> Result<()> {
+    loop {
+        {
+            let state = state.lock().unwrap();
+            let page = state.page();
+
+            display.clear();
+            page.draw(display, &state).unwrap();
+            display.flush().unwrap();
+        }
+
+        // std::thread::sleep(std::time::Duration::from_secs(0xFFFF_FFFF_FFFF_FFFF));
+        std::thread::sleep(Duration::from_secs(1));
+    }
+}
+
+pub trait Page<D>: Send + Sync
+where
+    D: DrawTarget<Color = BinaryColor> + Dimensions,
+    D::Color: From<BinaryColor>,
+{
+    fn draw(&self, display: &mut D, state: &State) -> Result<(), D::Error>;
+    fn next_page(&self) -> PageType;
+}
 
 impl<D> Page<D> for FeedPage
 where
     D: DrawTarget<Color = BinaryColor> + Dimensions,
     D::Color: From<BinaryColor>,
 {
-    fn draw(&self, display: &mut D) -> Result<(), D::Error> {
+    fn draw(&self, display: &mut D, _: &State) -> Result<(), D::Error> {
         Ok(())
+    }
+
+    fn next_page(&self) -> PageType {
+        PageType::ExamplePage
     }
 }
 
@@ -58,7 +70,7 @@ where
     D: DrawTarget<Color = BinaryColor> + Dimensions,
     D::Color: From<BinaryColor>,
 {
-    fn draw(&self, display: &mut D) -> Result<(), D::Error> {
+    fn draw(&self, display: &mut D, _: &State) -> Result<(), D::Error> {
         let thin_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
         let thick_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 3);
         let border_stroke = PrimitiveStyleBuilder::new()
@@ -109,7 +121,7 @@ where
         )
         .draw(display)?;
 
-        if let Ok(datetime) = get_datetime() {
+        if let Ok(datetime) = datetime::get_datetime() {
             let format =
                 time::format_description::parse("[day].[month].[year] [hour]:[minute]:[second]")
                     .expect("Invalid format.");
@@ -124,6 +136,10 @@ where
 
         Ok(())
     }
+
+    fn next_page(&self) -> PageType {
+        PageType::FeedPage
+    }
 }
 
 impl<D> Page<D> for ConfigPage
@@ -131,7 +147,7 @@ where
     D: DrawTarget<Color = BinaryColor> + Dimensions,
     D::Color: From<BinaryColor>,
 {
-    fn draw(&self, display: &mut D) -> Result<(), D::Error> {
+    fn draw(&self, display: &mut D, state: &State) -> Result<(), D::Error> {
         let border_stroke = PrimitiveStyleBuilder::new()
             .stroke_color(BinaryColor::On)
             .stroke_width(3)
@@ -149,21 +165,17 @@ where
             .into_styled(border_stroke)
             .draw(display)?;
 
-        // Text::with_alignment(
-        //     "ESP-Feed\nSetup Mode\nSSID: \"ESP-Feed\"\nPassword: \"38294446\"\nIP: 192.168.71.1",
-        //     display.bounding_box().center() - Point::new(0, 17),
-        //     character_style_text,
-        //     Alignment::Center,
-        // )
-        // .draw(display)?;
-
         let textbox_style = TextBoxStyleBuilder::new()
             .alignment(embedded_text::alignment::HorizontalAlignment::Center)
             .vertical_alignment(embedded_text::alignment::VerticalAlignment::Middle)
             .build();
 
         TextBox::with_textbox_style(
-            "ESP-Feed\nSetup Mode\nSSID: \"ESP-Feed\"\nPassword: \"38294446\"\nIP: 192.168.71.1",
+            &format!(
+                "Setup Mode\n\nSSID: {}\nPassword: {}\nIP: 192.168.71.1",
+                definitions::AP_SSID,
+                definitions::AP_PASSWORD
+            ),
             display.bounding_box(),
             character_style_text,
             textbox_style,
@@ -171,5 +183,9 @@ where
         .draw(display)?;
 
         Ok(())
+    }
+
+    fn next_page(&self) -> PageType {
+        PageType::ConfigPage
     }
 }
