@@ -4,14 +4,13 @@ use esp_idf_svc::{netif::*, nvs::*, sysloop::*, wifi::*};
 use log::*;
 use std::sync::Arc;
 
-const SSID: &str = env!("WIFI_SSID");
-const PASS: &str = env!("WIFI_PASS");
+pub const SSID: &str = env!("WIFI_SSID");
+pub const PASS: &str = env!("WIFI_PASS");
 
-pub fn wifi(
+pub fn connect(
     netif_stack: Arc<EspNetifStack>,
     sys_loop_stack: Arc<EspSysLoopStack>,
     default_nvs: Arc<EspDefaultNvs>,
-    ap_mode: bool,
 ) -> Result<EspWifi> {
     let mut wifi = EspWifi::new(netif_stack, sys_loop_stack, default_nvs)?;
 
@@ -34,24 +33,14 @@ pub fn wifi(
         None
     };
 
-    let conf = if ap_mode {
-        Configuration::AccessPoint(AccessPointConfiguration {
-            ssid: "ESP-Feed".into(),
-            channel: channel.unwrap_or(1),
-            auth_method: AuthMethod::WPA2Personal,
-            password: "38294446".into(),
-            ..Default::default()
-        })
-    } else {
-        Configuration::Client(ClientConfiguration {
-            ssid: SSID.into(),
-            password: PASS.into(),
-            channel,
-            ..Default::default()
-        })
-    };
+    let configuration = Configuration::Client(ClientConfiguration {
+        ssid: SSID.into(),
+        password: PASS.into(),
+        channel,
+        ..Default::default()
+    });
 
-    wifi.set_configuration(&conf)?;
+    wifi.set_configuration(&configuration)?;
 
     info!("Wifi configuration set, about to get status");
 
@@ -71,6 +60,29 @@ pub fn wifi(
         );
     }
 
+    Ok(wifi)
+}
+
+pub fn create_accesspoint(
+    netif_stack: Arc<EspNetifStack>,
+    sys_loop_stack: Arc<EspSysLoopStack>,
+    default_nvs: Arc<EspDefaultNvs>,
+) -> Result<EspWifi> {
+    let mut wifi = EspWifi::new(netif_stack, sys_loop_stack, default_nvs)?;
+
+    let configuration = Configuration::AccessPoint(AccessPointConfiguration {
+        ssid: "ESP-Feed".into(),
+        channel: 1,
+        auth_method: AuthMethod::WPA2Personal,
+        password: "38294446".into(),
+        ..Default::default()
+    });
+
+    wifi.set_configuration(&configuration)?;
+
+    info!("Wifi configuration set, about to get status");
+
+    let status = wifi.get_status();
     if let Status(_, ApStatus::Started(ApIpStatus::Done)) = &status {
         info!("Accesspoint configured!");
     }

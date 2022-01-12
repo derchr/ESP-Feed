@@ -13,20 +13,20 @@ pub struct Feed {
     pub headlines: Vec<String>,
 }
 pub struct FeedController {
-    current_feeds: Vec<Feed>,
+    feeds: Vec<Feed>,
     urls: Vec<Url>,
 }
 
 impl FeedController {
     pub fn new() -> Self {
         Self {
-            current_feeds: Vec::new(),
+            feeds: Vec::new(),
             urls: Vec::new(),
         }
     }
 
-    pub fn retrieve_feeds(&mut self) -> Result<()> {
-        self.current_feeds.clear();
+    pub fn refresh(&mut self) -> Result<()> {
+        self.feeds.clear();
 
         for url in &self.urls {
             if let Ok(feed) = rss_feed(&url) {
@@ -34,8 +34,8 @@ impl FeedController {
                 for line in &feed.headlines {
                     info!("{}", line);
                 }
-    
-                self.current_feeds.push(feed);
+
+                self.feeds.push(feed);
             } else {
                 warn!("Could not retrieve/parse feed {}", url);
             }
@@ -44,9 +44,12 @@ impl FeedController {
         Ok(())
     }
 
-    pub fn set_urls(&mut self, urls: &[Url]) {
-        self.urls.clear();
-        self.urls.extend_from_slice(urls);
+    pub fn urls(&mut self) -> &mut Vec<Url> {
+        &mut self.urls
+    }
+
+    pub fn feeds(&self) -> &[Feed] {
+        &self.feeds
     }
 }
 

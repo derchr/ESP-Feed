@@ -27,7 +27,7 @@ experimental = ["esp-idf-svc/experimental", "esp-idf-hal/experimental", "embedde
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
 log = "0.4"
-esp-idf-sys = { version = "0.29", features = ["binstart"] }
+esp-idf-sys = { version = "0.30", features = ["binstart"] }
 esp-idf-svc = "0.36"
 embedded-svc = "0.16"
 esp-idf-hal = "0.32"
@@ -40,7 +40,7 @@ embedded-graphics-core = "0.3"
 embedded-layout = "0.2"
 embedded-text = "0.5"
 ssd1306 = "0.7"
-url = "2.2.2"
+url = "2.2"
 serde = "1.0"
 serde_json = "1.0"
 

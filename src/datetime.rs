@@ -1,6 +1,5 @@
 use anyhow::Result;
-use std::convert::TryFrom;
-use std::time::SystemTime;
+use std::{convert::TryFrom, time::SystemTime};
 use time::*;
 
 pub fn initialize_time() -> Result<esp_idf_svc::sntp::EspSntp> {
