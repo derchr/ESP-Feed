@@ -19,8 +19,7 @@ fn main() -> Result<()> {
     esp_idf_sys::link_patches();
 
     esp_idf_svc::log::EspLogger::initialize_default();
-    esp_idf_svc::log::EspLogger
-        .set_target_level("*" /* nur wifi stuff ? */, log::LevelFilter::Trace);
+    esp_idf_svc::log::EspLogger.set_target_level("*", log::LevelFilter::Debug);
 
     std::env::set_var("RUST_BACKTRACE", "1");
 
@@ -64,7 +63,6 @@ fn main() -> Result<()> {
     let urls = [
         url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url"),
         url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml").expect("Invalid Url"),
-        url::Url::parse("https://blog.rust-embedded.org/rss.xml").expect("Invalid Url"),
     ];
     controller.set_urls(&urls);
     controller
