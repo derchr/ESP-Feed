@@ -9,6 +9,8 @@ use embedded_graphics::{
     text::{Alignment, Text},
 };
 
+use embedded_text::{style::TextBoxStyleBuilder, TextBox};
+
 use ssd1306::{mode::BufferedGraphicsMode, prelude::*, Ssd1306};
 
 use crate::datetime::*;
@@ -29,7 +31,7 @@ pub fn draw_page(display: &mut Display, page: Box<dyn Page<Display>>) {
     }
 }
 
-pub trait Page<D> : Send
+pub trait Page<D>: Send
 where
     D: DrawTarget<Color = BinaryColor> + Dimensions,
     D::Color: From<BinaryColor>,
@@ -147,11 +149,24 @@ where
             .into_styled(border_stroke)
             .draw(display)?;
 
-        Text::with_alignment(
+        // Text::with_alignment(
+        //     "ESP-Feed\nSetup Mode\nSSID: \"ESP-Feed\"\nPassword: \"38294446\"\nIP: 192.168.71.1",
+        //     display.bounding_box().center() - Point::new(0, 17),
+        //     character_style_text,
+        //     Alignment::Center,
+        // )
+        // .draw(display)?;
+
+        let textbox_style = TextBoxStyleBuilder::new()
+            .alignment(embedded_text::alignment::HorizontalAlignment::Center)
+            .vertical_alignment(embedded_text::alignment::VerticalAlignment::Middle)
+            .build();
+
+        TextBox::with_textbox_style(
             "ESP-Feed\nSetup Mode\nSSID: \"ESP-Feed\"\nPassword: \"38294446\"\nIP: 192.168.71.1",
-            display.bounding_box().center() - Point::new(0, 17),
+            display.bounding_box(),
             character_style_text,
-            Alignment::Center,
+            textbox_style,
         )
         .draw(display)?;
 
