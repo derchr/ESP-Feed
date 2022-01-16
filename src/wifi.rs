@@ -1,13 +1,15 @@
+use crate::state::WifiConfig;
 use anyhow::*;
 use embedded_svc::wifi::*;
 use esp_idf_svc::{netif::*, nvs::*, sysloop::*, wifi::*};
 use log::*;
 use std::sync::Arc;
 
-pub const SSID: &str = env!("WIFI_SSID");
-pub const PASS: &str = env!("WIFI_PASS");
+const SSID: &str = env!("WIFI_SSID");
+const PASS: &str = env!("WIFI_PASS");
 
 pub fn connect(
+    wifi_config: Option<WifiConfig>,
     netif_stack: Arc<EspNetifStack>,
     sys_loop_stack: Arc<EspSysLoopStack>,
     default_nvs: Arc<EspDefaultNvs>,
@@ -15,27 +17,31 @@ pub fn connect(
     let mut wifi = EspWifi::new(netif_stack, sys_loop_stack, default_nvs)?;
 
     info!("Wifi created, about to scan");
+    let WifiConfig {ssid, pass} = wifi_config.unwrap_or(WifiConfig {
+        ssid: SSID.to_string(),
+        pass: PASS.to_string()
+    });
 
     let ap_info_list = wifi.scan()?;
-    let ap_info = ap_info_list.into_iter().find(|a| a.ssid == SSID);
+    let ap_info = ap_info_list.into_iter().find(|a| a.ssid == ssid);
 
     let channel = if let Some(ap_info) = ap_info {
         info!(
             "Found configured access point {} on channel {}",
-            SSID, ap_info.channel
+            ssid, ap_info.channel
         );
         Some(ap_info.channel)
     } else {
         warn!(
             "Configured access point {} not found during scanning, will go with unknown channel",
-            SSID
+            ssid
         );
         None
     };
 
     let configuration = Configuration::Client(ClientConfiguration {
-        ssid: SSID.into(),
-        password: PASS.into(),
+        ssid: ssid.into(),
+        password: pass.into(),
         channel,
         ..Default::default()
     });

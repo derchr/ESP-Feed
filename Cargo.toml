@@ -35,11 +35,11 @@ embedded-graphics = "0.7"
 embedded-graphics-core = "0.3"
 embedded-layout = "0.2"
 embedded-text = "0.5"
+tinytga = "0.4"
 ssd1306 = "0.7"
 url = "2.2"
 serde = "1.0"
 serde_json = "1.0"
-# png = "0.17"
 lazy_static = "1.4"
 
 [build-dependencies]
