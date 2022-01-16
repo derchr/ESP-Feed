@@ -1,7 +1,8 @@
-use crate::{state::State, datetime, definitions, display::Display, feed::Feed};
+use crate::{datetime, definitions, display::Display, feed::Feed, state::State};
 use anyhow::Result;
 use embedded_graphics::{
     geometry::{Point, Size},
+    image::{Image, ImageRawBE},
     mono_font::{ascii::FONT_6X10, MonoTextStyleBuilder},
     pixelcolor::BinaryColor,
     prelude::*,
@@ -133,6 +134,11 @@ where
             )
             .draw(display)?;
         }
+
+        // let (icon_buf, info) = crate::weather::icons::get_icon("bw").unwrap();
+        // let image_raw = ImageRawBE::new_binary(&icon_buf[..info.buffer_size()], info.width);
+        // let image = Image::new(&image_raw, Point::new(0, 0));
+        // image.draw(display)?;
 
         Ok(())
     }
