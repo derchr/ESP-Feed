@@ -135,18 +135,14 @@ where
             .draw(display)?;
         }
 
-        // let (icon_buf, info) = crate::weather::icons::get_icon("bw").unwrap();
-        // let image_raw = ImageRawBE::new_binary(&icon_buf[..info.buffer_size()], info.width);
-        // let image = Image::new(&image_raw, Point::new(0, 0));
+        // Picture PoC
+        // use std::io::Read;
+        // let mut icon = std::fs::File::open("/mnt/bw.tga").unwrap();
+        // let mut buf = Vec::new();
+        // icon.read_to_end(&mut buf).unwrap();
+        // let tga = tinytga::DynamicTga::from_slice(&buf).unwrap();
+        // let image = Image::new(&tga, Point::zero());
         // image.draw(display)?;
-
-        use std::io::Read;
-        let mut icon = std::fs::File::open("/mnt/bw.tga").unwrap();
-        let mut buf = Vec::new();
-        icon.read_to_end(&mut buf).unwrap();
-        let tga = tinytga::DynamicTga::from_slice(&buf).unwrap();
-        let image = Image::new(&tga, Point::zero());
-        image.draw(display)?;
 
         Ok(())
     }

@@ -22,15 +22,16 @@ native = ["esp-idf-sys/native"]
 experimental = ["esp-idf-svc/experimental", "esp-idf-hal/experimental", "embedded-svc/experimental"]
 
 [dependencies]
-anyhow = { version = "1", features = ["backtrace"] }
+anyhow = { version = "1.0", features = ["backtrace"] }
 log = "0.4"
 esp-idf-sys = { version = "0.30", features = ["binstart"] }
 esp-idf-svc = "0.36"
 embedded-svc = "0.16"
 esp-idf-hal = "0.32"
 embedded-hal = "1.0.0-alpha.6"
-xml-rs = "0.8.4"
-time = { version = "0.3.5", features = ["macros", "formatting"] }
+xml-rs = "0.8"
+quick-xml = "0.22"
+time = { version = "0.3", features = ["macros", "formatting"] }
 embedded-graphics = "0.7"
 embedded-graphics-core = "0.3"
 embedded-layout = "0.2"

@@ -11,7 +11,7 @@ fn setup_logging() {
     esp_idf_svc::log::EspLogger::initialize_default();
     esp_idf_svc::log::EspLogger.set_target_level("*", log::LevelFilter::Debug);
 
-    std::env::set_var("RUST_BACKTRACE", "1");
+    // std::env::set_var("RUST_BACKTRACE", "1");
 }
 
 fn main() -> Result<()> {
