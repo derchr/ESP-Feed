@@ -28,16 +28,22 @@ impl FeedController {
     pub fn refresh(&mut self) -> Result<()> {
         self.feeds.clear();
 
-        for url in &self.urls {
-            if let Ok(feed) = rss_feed(&url) {
-                info!("New feed: {}", feed.title);
-                for line in &feed.headlines {
-                    info!("{}", line);
-                }
+        for url in self.urls.clone() {
+            match self
+                .rss_feed(&url)
+                .with_context(|| format!("Could not retrieve/parse feed {}", url))
+            {
+                Ok(feed) => {
+                    info!("Got new feed: {}", feed.title);
+                    for line in &feed.headlines {
+                        info!("{}", line);
+                    }
 
-                self.feeds.push(feed);
-            } else {
-                warn!("Could not retrieve/parse feed {}", url);
+                    self.feeds.push(feed);
+                }
+                Err(e) => {
+                    warn!("{:?}", e)
+                }
             }
         }
 
@@ -51,59 +57,64 @@ impl FeedController {
     pub fn feeds(&self) -> &[Feed] {
         &self.feeds
     }
-}
 
-pub fn rss_feed(url: &Url) -> Result<Feed> {
-    let mut first_title = true;
-    let mut title_follows = false;
-    let mut title_count = 0;
-    let mut title = String::new();
-    let mut headlines = Vec::new();
+    fn rss_feed(&mut self, url: &Url) -> Result<Feed> {
+        let mut first_title = true;
+        let mut title_follows = false;
+        let mut title_count = 0;
+        let mut title = String::new();
+        let mut headlines = Vec::with_capacity(10);
 
-    let config = xml::ParserConfig::new().trim_whitespace(true);
+        let mut client = EspHttpClient::new_default().context("Failed to create HTTP client.")?;
+        let request = client.get(url)?.submit()?;
 
-    let mut http_client = EspHttpClient::new_default().context("Failed to create HTTP client.")?;
-    let request = http_client.get(url)?.submit()?;
+        let request_reader = BufReader::new(StdIO(&request));
 
-    let mut request_reader = BufReader::new(StdIO(&request));
+        let mut buf = Vec::new();
+        let mut parser = quick_xml::Reader::from_reader(request_reader);
 
-    let parser = xml::reader::EventReader::new_with_config(&mut request_reader, config);
+        loop {
+            use quick_xml::events::Event;
 
-    for e in parser {
-        match e {
-            Ok(xml::reader::XmlEvent::StartElement { name, .. }) => {
-                if name.local_name == "title" {
-                    title_follows = true;
+            match parser.read_event(&mut buf) {
+                Ok(Event::Start(ref e)) => {
+                    let local_name = std::str::from_utf8(e.local_name())?;
+
+                    if local_name == "title" {
+                        title_follows = true;
+                    }
                 }
+                Ok(Event::End(ref e)) => {
+                    let local_name = std::str::from_utf8(e.local_name())?;
+
+                    if local_name == "title" {
+                        title_follows = false;
+                    }
+                }
+                Ok(Event::Text(e)) => {
+                    let content = e.unescape_and_decode(&parser)?;
+
+                    if first_title && title_follows {
+                        title = content;
+                        first_title = false;
+                        continue;
+                    }
+
+                    if title_follows {
+                        title_count += 1;
+                        headlines.push(content);
+                    }
+
+                    if title_count == 10 {
+                        break;
+                    }
+                }
+                Err(e) => bail!(e),
+                Ok(Event::Eof) => break,
+                _ => (),
             }
-            Ok(xml::reader::XmlEvent::EndElement { name }) => {
-                if name.local_name == "title" {
-                    title_follows = false;
-                }
-            }
-            Ok(xml::reader::XmlEvent::Characters(content)) => {
-                if first_title {
-                    title = content;
-                    first_title = false;
-                    continue;
-                }
-
-                if title_follows {
-                    title_count += 1;
-                    headlines.push(content);
-                }
-
-                if title_count == 10 {
-                    break;
-                }
-            }
-            Err(e) => {
-                warn!("Parse error: {}", e); // TODO remove (log errors when handling!)
-                bail!("Parse error: {}", e);
-            }
-            _ => {}
         }
-    }
 
-    Ok(Feed { title, headlines })
+        Ok(Feed { title, headlines })
+    }
 }
