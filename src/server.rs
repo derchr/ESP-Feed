@@ -1,27 +1,35 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
+use embedded_svc::httpd::{registry::Registry, Handler, Method, Response};
+use esp_idf_svc::httpd::Server;
 use log::*;
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use serde::Deserialize;
+use std::fs::File;
 
-pub fn httpd() -> Result<esp_idf_svc::httpd::Server> {
-    use anyhow::bail;
-    use embedded_svc::httpd::registry::*;
-    use embedded_svc::httpd::*;
+fn favicon_handler() -> Handler {
+    Handler::new("/favicon.ico", Method::Get, |_| {
+        let favicon_path = "/mnt/favicon.ico";
+        let favicon = File::open(favicon_path)
+            .with_context(|| format!("Could not find favicon: {}", favicon_path))?;
 
-    let form_handler = embedded_svc::httpd::Handler::new(
-        "/form",
-        embedded_svc::httpd::Method::Get,
-        |req| -> Result<embedded_svc::httpd::Response> {
-            Ok(embedded_svc::httpd::Response {
-                status: 200,
-                status_message: None,
-                headers: BTreeMap::new(),
-                body: embedded_svc::httpd::Body::Empty,
-                new_session_state: None,
-            })
-        },
-    );
+        Ok(Response::new(200)
+            .content_type("image/x-icon")
+            .body(favicon.into()))
+    })
+}
 
+fn weather() -> Handler {
+    Handler::new("/weather", Method::Get, |_| {
+        let path = "/mnt/01d.png";
+        let icon = File::open(path)
+            .with_context(|| format!("Could not find weather icon: {}", path))?;
+
+        Ok(Response::new(200)
+            .content_type("image/png")
+            .body(icon.into()))
+    })
+}
+
+pub fn httpd() -> Result<Server> {
     let server = esp_idf_svc::httpd::ServerRegistry::new()
         .at("/")
         .get(|_| {
@@ -39,31 +47,8 @@ pub fn httpd() -> Result<esp_idf_svc::httpd::Server> {
             ))
             .into())
         })?
-        .at("/foo")
-        .get(|_| bail!("Boo, something happened!"))?
-        .at("/bar")
-        .get(|_| {
-            Response::new(403)
-                .status_message("No permissions")
-                .body("You have no permissions to access this page".into())
-                .into()
-        })?
-        .at("/panic")
-        .get(|_| panic!("User requested a panic!"))?
-        .handler(form_handler)?
-        .at("/favicon.ico")
-        .get(|_| {
-            Response::new(200)
-                .content_type("image/x-icon")
-                .body(embedded_svc::httpd::Body::Bytes(
-                    include_bytes!(concat!(
-                        env!("CARGO_MANIFEST_DIR"),
-                        "/resources/favicon.ico"
-                    ))
-                    .to_vec(),
-                ))
-                .into()
-        })?
+        .handler(favicon_handler())?
+        .handler(weather())?
         .at("/")
         .post(move |mut req| {
             let body = req.as_string().unwrap_or("".into());
@@ -72,7 +57,7 @@ pub fn httpd() -> Result<esp_idf_svc::httpd::Server> {
             struct Form {
                 name: String,
                 ssid: String,
-                auth: String,
+                pass: String,
             }
 
             let my_form: Form = serde_json::from_str(&body).unwrap();

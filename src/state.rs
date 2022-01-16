@@ -6,10 +6,10 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct WifiConfig {
     pub ssid: String,
-    pub auth: String,
+    pub pass: String,
 }
 
 pub struct State {
@@ -31,7 +31,7 @@ impl State {
             feed_controller: FeedController::new(),
             setup_mode,
             page: page,
-            wifi: wifi_config
+            wifi: wifi_config,
         }
     }
 
