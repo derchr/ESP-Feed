@@ -5,7 +5,7 @@ use embedded_svc::{
 };
 use esp_idf_svc::http::client::EspHttpClient;
 use log::*;
-use std::io::BufReader;
+use std::io::{BufReader, Read, BufRead};
 use url::Url;
 
 pub struct Feed {
@@ -28,9 +28,14 @@ impl FeedController {
     pub fn refresh(&mut self) -> Result<()> {
         self.feeds.clear();
 
-        for url in self.urls.clone() {
+        let mut client = EspHttpClient::new_default().context("Failed to create HTTP client.")?;
+
+        for url in &self.urls.clone() {
+            let request = client.get(url)?.submit()?;
+            let mut request_reader = BufReader::new(StdIO(&request));
+
             match self
-                .rss_feed(&url)
+                .parse_rss_feed(&mut request_reader)
                 .with_context(|| format!("Could not retrieve/parse feed {}", url))
             {
                 Ok(feed) => {
@@ -58,20 +63,15 @@ impl FeedController {
         &self.feeds
     }
 
-    fn rss_feed(&mut self, url: &Url) -> Result<Feed> {
+    fn parse_rss_feed(&mut self, reader: &mut impl BufRead) -> Result<Feed> {
         let mut first_title = true;
         let mut title_follows = false;
         let mut title_count = 0;
         let mut title = String::new();
         let mut headlines = Vec::with_capacity(10);
 
-        let mut client = EspHttpClient::new_default().context("Failed to create HTTP client.")?;
-        let request = client.get(url)?.submit()?;
-
-        let request_reader = BufReader::new(StdIO(&request));
-
         let mut buf = Vec::new();
-        let mut parser = quick_xml::Reader::from_reader(request_reader);
+        let mut parser = quick_xml::Reader::from_reader(reader);
 
         loop {
             use quick_xml::events::Event;
