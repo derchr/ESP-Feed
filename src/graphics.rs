@@ -33,8 +33,20 @@ pub fn draw_pages(display: &mut Display, state: Arc<Mutex<State>>) -> Result<()>
             let state = state.lock().unwrap();
             let page = state.page();
 
+            // let cropped = display.cropped(&Rectangle {
+            //     top_left: Point { x: 0, y: 0 },
+            //     size: Size {
+            //         width: 110,
+            //         height: 60,
+            //     },
+            // });
+
             display.clear();
-            page.draw(display, &state).unwrap();
+            page.draw(
+                display,
+                &state,
+            )
+            .unwrap();
             display.flush().unwrap();
         }
 
@@ -48,7 +60,7 @@ where
     D: DrawTarget<Color = BinaryColor> + Dimensions,
     D::Color: From<BinaryColor>,
 {
-    fn draw(&self, display: &mut D, state: &State) -> Result<(), D::Error>;
+    fn draw(&self, target: &mut D, state: &State) -> Result<(), D::Error>;
     fn next_page(&self) -> PageType;
 }
 
@@ -57,7 +69,7 @@ where
     D: DrawTarget<Color = BinaryColor> + Dimensions,
     D::Color: From<BinaryColor>,
 {
-    fn draw(&self, display: &mut D, _: &State) -> Result<(), D::Error> {
+    fn draw(&self, target: &mut D, _: &State) -> Result<(), D::Error> {
         Ok(())
     }
 
@@ -71,7 +83,7 @@ where
     D: DrawTarget<Color = BinaryColor> + Dimensions,
     D::Color: From<BinaryColor>,
 {
-    fn draw(&self, display: &mut D, _: &State) -> Result<(), D::Error> {
+    fn draw(&self, target: &mut D, _: &State) -> Result<(), D::Error> {
         let thin_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
         let thick_stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 3);
         let border_stroke = PrimitiveStyleBuilder::new()
@@ -89,10 +101,10 @@ where
         let yoffset = 10;
 
         // Draw a 3px wide outline around the display.
-        display
+        target
             .bounding_box()
             .into_styled(border_stroke)
-            .draw(display)?;
+            .draw(target)?;
 
         // Draw a triangle.
         Triangle::new(
@@ -101,26 +113,26 @@ where
             Point::new(16 + 8, yoffset),
         )
         .into_styled(thin_stroke)
-        .draw(display)?;
+        .draw(target)?;
 
         // Draw a filled square
         Rectangle::new(Point::new(52, yoffset), Size::new(16, 16))
             .into_styled(fill)
-            .draw(display)?;
+            .draw(target)?;
 
         // Draw a circle with a 3px wide stroke.
         Circle::new(Point::new(88, yoffset), 17)
             .into_styled(thick_stroke)
-            .draw(display)?;
+            .draw(target)?;
 
         let text = "embedded-graphics";
         Text::with_alignment(
             text,
-            display.bounding_box().center() + Point::new(0, 17),
+            target.bounding_box().center() + Point::new(0, 17),
             character_style_text,
             Alignment::Center,
         )
-        .draw(display)?;
+        .draw(target)?;
 
         if let Ok(datetime) = datetime::get_datetime() {
             let format =
@@ -128,11 +140,11 @@ where
                     .expect("Invalid format.");
             Text::with_alignment(
                 &datetime.format(&format).expect("Could not format time."),
-                display.bounding_box().center() + Point::new(0, 27),
+                target.bounding_box().center() + Point::new(0, 27),
                 character_style_text,
                 Alignment::Center,
             )
-            .draw(display)?;
+            .draw(target)?;
         }
 
         // Picture PoC
@@ -157,7 +169,7 @@ where
     D: DrawTarget<Color = BinaryColor> + Dimensions,
     D::Color: From<BinaryColor>,
 {
-    fn draw(&self, display: &mut D, state: &State) -> Result<(), D::Error> {
+    fn draw(&self, target: &mut D, state: &State) -> Result<(), D::Error> {
         let border_stroke = PrimitiveStyleBuilder::new()
             .stroke_color(BinaryColor::On)
             .stroke_width(3)
@@ -170,10 +182,10 @@ where
             .background_color(BinaryColor::Off)
             .build();
 
-        display
+        target
             .bounding_box()
             .into_styled(border_stroke)
-            .draw(display)?;
+            .draw(target)?;
 
         let textbox_style = TextBoxStyleBuilder::new()
             .alignment(embedded_text::alignment::HorizontalAlignment::Center)
@@ -186,11 +198,11 @@ where
                 definitions::AP_SSID,
                 definitions::AP_PASSWORD
             ),
-            display.bounding_box(),
+            target.bounding_box(),
             character_style_text,
             textbox_style,
         )
-        .draw(display)?;
+        .draw(target)?;
 
         Ok(())
     }

@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
 use embedded_hal::digital::blocking::InputPin;
-use esp_feed::{datetime, display, feed, graphics, nvs::NvsController, server, state, wifi, storage::StorageHandle};
+use esp_feed::{
+    datetime, display, feed, graphics, nvs::NvsController, server, state, storage::StorageHandle,
+    weather, wifi,
+};
 use esp_idf_hal::prelude::*;
 use esp_idf_svc::{netif::*, nvs::*, sysloop::*};
 use esp_idf_sys; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
@@ -80,7 +83,7 @@ fn main() -> Result<()> {
 
     let _sntp = datetime::initialize_time()?;
     std::mem::forget(_sntp);
-
+    weather::current_weather();
     let mut controller = feed::FeedController::new();
     let urls = [
         url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url"),
