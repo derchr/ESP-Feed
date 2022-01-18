@@ -17,6 +17,7 @@ pub struct State {
     pub setup_mode: bool,
     pub page: Box<dyn Page<Display>>,
     pub wifi: Option<WifiConfig>,
+    pub location: String,
 }
 
 impl State {
@@ -32,6 +33,7 @@ impl State {
             setup_mode,
             page: page,
             wifi: wifi_config,
+            location: String::new(),
         }
     }
 

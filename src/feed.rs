@@ -5,7 +5,7 @@ use embedded_svc::{
 };
 use esp_idf_svc::http::client::EspHttpClient;
 use log::*;
-use std::io::{BufReader, Read, BufRead};
+use std::io::{BufRead, BufReader, Read};
 use url::Url;
 
 pub struct Feed {
@@ -30,12 +30,11 @@ impl FeedController {
 
         let mut client = EspHttpClient::new_default().context("Failed to create HTTP client.")?;
 
-        for url in &self.urls.clone() {
-            let request = client.get(url)?.submit()?;
-            let mut request_reader = BufReader::new(StdIO(&request));
+        for url in &self.urls {
+            let response = client.get(url)?.submit()?;
+            let mut response_reader = BufReader::new(StdIO(&response));
 
-            match self
-                .parse_rss_feed(&mut request_reader)
+            match parse_rss_feed(&mut response_reader)
                 .with_context(|| format!("Could not retrieve/parse feed {}", url))
             {
                 Ok(feed) => {
@@ -62,59 +61,59 @@ impl FeedController {
     pub fn feeds(&self) -> &[Feed] {
         &self.feeds
     }
+}
 
-    fn parse_rss_feed(&mut self, reader: &mut impl BufRead) -> Result<Feed> {
-        let mut first_title = true;
-        let mut title_follows = false;
-        let mut title_count = 0;
-        let mut title = String::new();
-        let mut headlines = Vec::with_capacity(10);
+fn parse_rss_feed(reader: &mut impl BufRead) -> Result<Feed> {
+    let mut first_title = true;
+    let mut title_follows = false;
+    let mut title_count = 0;
+    let mut title = String::new();
+    let mut headlines = Vec::with_capacity(10);
 
-        let mut buf = Vec::new();
-        let mut parser = quick_xml::Reader::from_reader(reader);
+    let mut buf = Vec::new();
+    let mut parser = quick_xml::Reader::from_reader(reader);
 
-        loop {
-            use quick_xml::events::Event;
+    loop {
+        use quick_xml::events::Event;
 
-            match parser.read_event(&mut buf) {
-                Ok(Event::Start(ref e)) => {
-                    let local_name = std::str::from_utf8(e.local_name())?;
+        match parser.read_event(&mut buf) {
+            Ok(Event::Start(ref e)) => {
+                let local_name = std::str::from_utf8(e.local_name())?;
 
-                    if local_name == "title" {
-                        title_follows = true;
-                    }
+                if local_name == "title" {
+                    title_follows = true;
                 }
-                Ok(Event::End(ref e)) => {
-                    let local_name = std::str::from_utf8(e.local_name())?;
-
-                    if local_name == "title" {
-                        title_follows = false;
-                    }
-                }
-                Ok(Event::Text(e)) => {
-                    let content = e.unescape_and_decode(&parser)?;
-
-                    if first_title && title_follows {
-                        title = content;
-                        first_title = false;
-                        continue;
-                    }
-
-                    if title_follows {
-                        title_count += 1;
-                        headlines.push(content);
-                    }
-
-                    if title_count == 10 {
-                        break;
-                    }
-                }
-                Err(e) => bail!(e),
-                Ok(Event::Eof) => break,
-                _ => (),
             }
-        }
+            Ok(Event::End(ref e)) => {
+                let local_name = std::str::from_utf8(e.local_name())?;
 
-        Ok(Feed { title, headlines })
+                if local_name == "title" {
+                    title_follows = false;
+                }
+            }
+            Ok(Event::Text(e)) => {
+                let content = e.unescape_and_decode(&parser)?;
+
+                if first_title && title_follows {
+                    title = content;
+                    first_title = false;
+                    continue;
+                }
+
+                if title_follows {
+                    title_count += 1;
+                    headlines.push(content);
+                }
+
+                if title_count == 10 {
+                    break;
+                }
+            }
+            Err(e) => bail!(e),
+            Ok(Event::Eof) => break,
+            _ => (),
+        }
     }
+
+    Ok(Feed { title, headlines })
 }
