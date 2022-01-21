@@ -1,7 +1,6 @@
 pub mod command;
 pub mod datetime;
 pub mod definitions;
-pub mod display;
 pub mod feed;
 pub mod graphics;
 pub mod nvs;

@@ -1,9 +1,11 @@
-use anyhow::{Context, Result};
-use embedded_hal::digital::blocking::InputPin;
 use esp_feed::{
-    datetime, display, feed, graphics, nvs::NvsController, server, state, storage::StorageHandle,
-    weather, wifi,
+    datetime, feed, graphics, graphics::display, nvs::NvsController, server, state,
+    storage::StorageHandle, weather, wifi,
 };
+
+use anyhow::{Context, Result};
+// use embedded_hal::digital::blocking::InputPin;
+use embedded_hal::digital::v2::InputPin;
 use esp_idf_hal::prelude::*;
 use esp_idf_svc::{netif::*, nvs::*, sysloop::*};
 use esp_idf_sys; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
@@ -38,12 +40,26 @@ fn main() -> Result<()> {
     let default_nvs = Arc::new(EspDefaultNvs::new()?);
 
     let mut nvs_controller = NvsController::new(Arc::clone(&default_nvs))?;
-
     // nvs_controller.store_wifi_config(&state::WifiConfig {
     //     ssid: wifi::SSID.into(),
     //     pass: wifi::PASS.into(),
     // })?;
     let wifi_config = nvs_controller.get_wifi_config().ok();
+
+    let mut display = display::get_display(pins.gpio27, pins.gpio26, peripherals.i2c0);
+
+    let state = Arc::new(Mutex::new(state::State::new(setup_mode, wifi_config.clone())));
+
+    {
+        let state = Arc::clone(&state);
+
+        std::thread::Builder::new()
+            .stack_size(10240)
+            .spawn(move || graphics::draw_pages(&mut display, state))
+            .map_err(|e| anyhow::Error::from(e))
+            .context("Could not create display thread.")?;
+    }
+
 
     let _wifi = if setup_mode {
         wifi::create_accesspoint(netif_stack, sys_loop_stack, default_nvs.clone())?
@@ -59,20 +75,6 @@ fn main() -> Result<()> {
         }
     };
     std::mem::forget(_wifi);
-
-    let mut display = display::get_display(pins.gpio27, pins.gpio26, peripherals.i2c0);
-
-    let state = Arc::new(Mutex::new(state::State::new(setup_mode, wifi_config)));
-
-    {
-        let state = Arc::clone(&state);
-
-        std::thread::Builder::new()
-            .stack_size(10240)
-            .spawn(move || graphics::draw_pages(&mut display, state))
-            .map_err(|e| anyhow::Error::from(e))
-            .context("Could not create display thread.")?;
-    }
 
     let _server = server::httpd()?;
     std::mem::forget(_server);
@@ -90,8 +92,24 @@ fn main() -> Result<()> {
         url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml").expect("Invalid Url"),
     ];
     controller.urls().extend_from_slice(&urls);
-    controller.refresh().context("Could not retrieve feeds.")?;
+    // controller.refresh().context("Could not retrieve feeds.")?;
 
-    // loop{}
+    let mut grow = false;
+    loop {
+        {
+            let ref mut width = state.lock().unwrap().width;
+            if grow && *width <= 128 {
+                grow = true;
+                *width += 1;
+            } else if *width >= 64 {
+                grow = false;
+                *width -= 1;
+            } else {
+                grow = true;
+            }
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(40));
+    }
     Ok(())
 }
