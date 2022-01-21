@@ -28,7 +28,7 @@ esp-idf-sys = { version = "0.30", features = ["binstart"] }
 esp-idf-svc = "0.36"
 embedded-svc = "0.16"
 esp-idf-hal = "0.32"
-embedded-hal = "1.0.0-alpha.6"
+embedded-hal = "0.2.6"
 xml-rs = "0.8"
 quick-xml = "0.22"
 time = { version = "0.3", features = ["macros", "formatting"] }
@@ -38,10 +38,10 @@ embedded-layout = "0.2"
 embedded-text = "0.5"
 tinytga = "0.4"
 ssd1306 = "0.7"
+epd-waveshare = "0.5"
 url = "2.2"
 serde = "1.0"
 serde_json = "1.0"
-lazy_static = "1.4"
 enum_dispatch = "0.3"
 
 [build-dependencies]

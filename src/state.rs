@@ -1,7 +1,7 @@
 use crate::{
-    display::Display,
+    graphics::display::Display,
     feed::FeedController,
-    graphics::{ConfigPage, ExamplePage, FeedPage, Page, PageType},
+    graphics::pages::{ConfigPage, ExamplePage, FeedPage, Page, PageType},
 };
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -15,17 +15,18 @@ pub struct WifiConfig {
 pub struct State {
     pub feed_controller: FeedController,
     pub setup_mode: bool,
-    pub page: Box<dyn Page<Display>>,
+    pub page: PageType,
     pub wifi: Option<WifiConfig>,
     pub location: String,
+    pub width: u32,
 }
 
 impl State {
     pub fn new(setup_mode: bool, wifi_config: Option<WifiConfig>) -> Self {
-        let page: Box<dyn Page<Display>> = if setup_mode {
-            Box::new(ConfigPage)
+        let page = if setup_mode {
+            ConfigPage.into()
         } else {
-            Box::new(ExamplePage)
+            ExamplePage.into()
         };
 
         Self {
@@ -34,18 +35,15 @@ impl State {
             page: page,
             wifi: wifi_config,
             location: String::new(),
+            width: 128,
         }
-    }
-
-    pub fn page(&self) -> &dyn Page<Display> {
-        &*self.page
     }
 
     pub fn next_page(&mut self) {
         match self.page.next_page() {
-            PageType::ConfigPage => self.page = Box::new(ConfigPage),
-            PageType::ExamplePage => self.page = Box::new(ExamplePage),
-            PageType::FeedPage => self.page = Box::new(FeedPage),
+            PageType::ConfigPage(_) => self.page = ConfigPage.into(),
+            PageType::ExamplePage(_) => self.page = ExamplePage.into(),
+            PageType::FeedPage(_) => self.page = FeedPage.into(),
         }
     }
 }

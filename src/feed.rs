@@ -8,9 +8,23 @@ use log::*;
 use std::io::{BufRead, BufReader, Read};
 use url::Url;
 
+pub struct ScrollState {
+    position: u32,
+    forward: bool,
+}
+
+impl Default for ScrollState {
+    fn default() -> Self {
+        Self {
+            position: 0,
+            forward: true,
+        }
+    }
+}
 pub struct Feed {
     pub title: String,
     pub headlines: Vec<String>,
+    // scroll position...
 }
 pub struct FeedController {
     feeds: Vec<Feed>,
