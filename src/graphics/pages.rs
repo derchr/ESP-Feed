@@ -43,11 +43,27 @@ pub trait Page: Send + Sync {
 }
 
 impl Page for FeedPage {
-    fn draw<D>(&self, target: &mut D, _: &State) -> Result<(), D::Error>
+    fn draw<D>(&self, target: &mut D, state: &State) -> Result<(), D::Error>
     where
         D: DrawTarget<Color = BinaryColor> + Dimensions,
         D::Color: From<BinaryColor>,
     {
+        let textbox_style = TextBoxStyleBuilder::new()
+            .alignment(embedded_text::alignment::HorizontalAlignment::Center)
+            .vertical_alignment(embedded_text::alignment::VerticalAlignment::Middle)
+            .build();
+
+        if let Some(feed) = state.feed_controller.feeds().get(0) {
+            let text = feed.headlines.get(0).unwrap();
+            TextBox::with_textbox_style(
+                &text,
+                target.bounding_box(),
+                style::normal_text(),
+                textbox_style,
+            )
+            .draw(target)?;
+        }
+
         Ok(())
     }
 
@@ -57,7 +73,7 @@ impl Page for FeedPage {
 }
 
 impl Page for ExamplePage {
-    fn draw<D>(&self, target: &mut D, state: &State) -> Result<(), D::Error>
+    fn draw<D>(&self, target: &mut D, _: &State) -> Result<(), D::Error>
     where
         D: DrawTarget<Color = BinaryColor> + Dimensions,
         D::Color: From<BinaryColor>,
@@ -73,35 +89,15 @@ impl Page for ExamplePage {
             .into_styled(style::border_stroke())
             .draw(target)?;
 
-        {
-            let position = Point::new(10, 10);
-
-            let ref mut clipped_target =
-                target.clipped(&Rectangle::new(position, Size::new(30, 10)));
-
-            Text::with_baseline(
-                "Long text, that should scroll.",
-                position - Point::new(((129 - state.width) * 2) as _, 0),
-                style::normal_text(),
-                Baseline::Top,
-            )
-            .draw(clipped_target)?;
-        }
-
         // Draw a triangle.
         let triangle = Triangle::new(Point::new(0, 16), Point::new(16, 16), Point::new(8, 0))
-            //.translate(Point { x: 16, y: yOffset })
             .into_styled(style::thin_stroke());
 
         // Draw a filled square
-        let rectangle = Rectangle::new(Point::zero(), Size::new(16, 16))
-            //.translate(Point { x: 52, y: yOffset })
-            .into_styled(fill);
+        let rectangle = Rectangle::new(Point::zero(), Size::new(16, 16)).into_styled(fill);
 
         // Draw a circle with a 3px wide stroke.
-        let circle = Circle::new(Point::zero(), 17)
-            //.translate(Point { x: 88, y: yOffset })
-            .into_styled(style::thick_stroke());
+        let circle = Circle::new(Point::zero(), 17).into_styled(style::thick_stroke());
 
         let shapes =
             LinearLayout::horizontal(Chain::new(triangle).append(rectangle).append(circle))
@@ -117,14 +113,14 @@ impl Page for ExamplePage {
             .vertical_alignment(embedded_text::alignment::VerticalAlignment::Middle)
             .build();
 
-        // let text = "embedded-graphics";
-        // Text::with_alignment(
-        //     text,
-        //     target.bounding_box().center() + Point::new(0, 17),
-        //     style::normal_text(),
-        //     Alignment::Center,
-        // )
-        // .draw(target)?;
+        let text = "embedded-graphics";
+        Text::with_alignment(
+            text,
+            target.bounding_box().center() + Point::new(0, 17),
+            style::normal_text(),
+            Alignment::Center,
+        )
+        .draw(target)?;
 
         if let Ok(datetime) = datetime::get_datetime() {
             let format =
