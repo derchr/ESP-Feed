@@ -1,9 +1,17 @@
+use crate::command::Command;
 use anyhow::{Context, Result};
 use embedded_svc::httpd::{registry::Registry, Handler, Method, Response};
 use esp_idf_svc::httpd::Server;
 use log::*;
 use serde::Deserialize;
-use std::fs::File;
+use std::{fs::File, sync::mpsc::Sender};
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct FormData {
+    pub name: String,
+    pub ssid: String,
+    pub pass: String,
+}
 
 fn favicon_handler() -> Handler {
     Handler::new("/favicon.ico", Method::Get, |_| {
@@ -20,8 +28,8 @@ fn favicon_handler() -> Handler {
 fn weather() -> Handler {
     Handler::new("/weather", Method::Get, |_| {
         let path = "/mnt/01d.png";
-        let icon = File::open(path)
-            .with_context(|| format!("Could not find weather icon: {}", path))?;
+        let icon =
+            File::open(path).with_context(|| format!("Could not find weather icon: {}", path))?;
 
         Ok(Response::new(200)
             .content_type("image/png")
@@ -29,7 +37,7 @@ fn weather() -> Handler {
     })
 }
 
-pub fn httpd() -> Result<Server> {
+pub fn httpd(command_tx: Sender<Command>) -> Result<Server> {
     let server = esp_idf_svc::httpd::ServerRegistry::new()
         .at("/")
         .get(|_| {
@@ -53,23 +61,10 @@ pub fn httpd() -> Result<Server> {
         .post(move |mut req| {
             let body = req.as_string().unwrap_or("".into());
 
-            #[derive(Deserialize, Debug)]
-            struct Form {
-                name: String,
-                ssid: String,
-                pass: String,
-            }
+            let form: FormData = serde_json::from_str(&body).unwrap();
+            command_tx.send(Command::SaveConfig(form))?;
 
-            let my_form: Form = serde_json::from_str(&body).unwrap();
-
-            let resp = format!(
-                "Header: {}<br>Body: {}<br>",
-                req.header("User-Agent").unwrap_or_default(),
-                body
-            );
-
-            info!("Send resp: {}, Form: {:?}", resp, my_form);
-
+            let resp = "Gespeichert!";
             Response::new(200).body(resp.into()).into()
         })?;
 

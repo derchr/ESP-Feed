@@ -1,16 +1,10 @@
 use crate::{
     graphics::display::Display,
+    wifi::WifiConfig,
     feed::FeedController,
     graphics::pages::{ConfigPage, ExamplePage, FeedPage, Page, PageType},
 };
-use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct WifiConfig {
-    pub ssid: String,
-    pub pass: String,
-}
 
 pub struct State {
     pub feed_controller: FeedController,
