@@ -5,8 +5,8 @@ use esp_idf_svc::{netif::*, nvs::*, sysloop::*, wifi::*};
 use log::*;
 use std::sync::Arc;
 
-const SSID: &str = env!("WIFI_SSID");
-const PASS: &str = env!("WIFI_PASS");
+pub const SSID: &str = env!("WIFI_SSID");
+pub const PASS: &str = env!("WIFI_PASS");
 
 pub fn connect(
     wifi_config: Option<WifiConfig>,
