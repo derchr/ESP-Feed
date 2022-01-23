@@ -3,11 +3,10 @@ use epd_waveshare::{
     epd2in13_v2::{Display2in13, Epd2in13},
     prelude::WaveshareDisplay,
 };
-use esp_idf_hal::delay::Ets;
 use esp_idf_hal::{
     gpio, i2c,
     prelude::*,
-    spi::{config::Config, Master, Pins, SPI3},
+    spi::{config::Config, Master, Pins, SPI3}, delay::Ets,
 };
 use ssd1306::{mode::BufferedGraphicsMode, prelude::*, I2CDisplayInterface, Ssd1306};
 

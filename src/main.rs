@@ -32,12 +32,49 @@ fn main() -> Result<()> {
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
 
+    let interrupt_pin = pins.gpio13.into_input().unwrap();
     let setup_button = pins.gpio35.into_input().unwrap();
     let setup_mode = setup_button.is_high().unwrap();
 
     let netif_stack = Arc::new(EspNetifStack::new()?);
     let sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
     let default_nvs = Arc::new(EspDefaultNvs::new()?);
+
+    let var = Arc::new(esp_idf_hal::interrupt::Mutex::new(0u8));
+    let var_cloned = Arc::clone(&var);
+
+    let handle = move || {
+        let mut value = var_cloned.lock();
+        *value += 1;
+    };
+
+    unsafe {
+        esp_idf_sys::gpio_set_intr_type(13, esp_idf_sys::GPIO_INT_TYPE_GPIO_PIN_INTR_POSEDGE);
+        esp_idf_sys::gpio_install_isr_service(0);
+
+        fn add_isr_handler<F>(f: F)
+        where
+            F: FnMut() -> (),
+            F: 'static,
+        {
+            extern "C" fn isr_handler(arg: *mut std::ffi::c_void) {
+                let closure: &mut Box<dyn FnMut() -> ()> = unsafe { std::mem::transmute(arg) };
+                closure();
+            }
+
+            let cb: Box<Box<dyn FnMut() -> ()>> = Box::new(Box::new(f));
+            unsafe {
+                esp_idf_sys::gpio_isr_handler_add(
+                    13,
+                    Some(isr_handler),
+                    Box::into_raw(cb) as *mut _,
+                );
+            }
+        }
+
+        add_isr_handler(handle);
+        // esp_idf_sys::gpio_isr_handler_add(13, Some(handler), std::ptr::null_mut());
+    }
 
     let mut nvs_controller = NvsController::new(Arc::clone(&default_nvs))?;
     // nvs_controller.store_wifi_config(&state::WifiConfig {
@@ -48,7 +85,10 @@ fn main() -> Result<()> {
 
     let mut display = display::get_display(pins.gpio27, pins.gpio26, peripherals.i2c0);
 
-    let state = Arc::new(Mutex::new(state::State::new(setup_mode, wifi_config.clone())));
+    let state = Arc::new(Mutex::new(state::State::new(
+        setup_mode,
+        wifi_config.clone(),
+    )));
 
     {
         let state = Arc::clone(&state);
@@ -59,7 +99,6 @@ fn main() -> Result<()> {
             .map_err(|e| anyhow::Error::from(e))
             .context("Could not create display thread.")?;
     }
-
 
     let _wifi = if setup_mode {
         wifi::create_accesspoint(netif_stack, sys_loop_stack, default_nvs.clone())?
@@ -85,31 +124,25 @@ fn main() -> Result<()> {
 
     let _sntp = datetime::initialize_time()?;
     std::mem::forget(_sntp);
-    weather::current_weather();
-    let mut controller = feed::FeedController::new();
-    let urls = [
-        url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url"),
-        url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml").expect("Invalid Url"),
-    ];
-    controller.urls().extend_from_slice(&urls);
-    // controller.refresh().context("Could not retrieve feeds.")?;
 
-    let mut grow = false;
+    {
+        let ref mut controller = state.lock().unwrap().feed_controller;
+        let urls = [
+            url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url"),
+            url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml")
+                .expect("Invalid Url"),
+        ];
+        controller.urls().extend_from_slice(&urls);
+        controller.refresh().context("Could not retrieve feeds.")?;
+    }
+
     loop {
         {
-            let ref mut width = state.lock().unwrap().width;
-            if grow && *width <= 128 {
-                grow = true;
-                *width += 1;
-            } else if *width >= 64 {
-                grow = false;
-                *width -= 1;
-            } else {
-                grow = true;
-            }
+            let val = *var.lock();
+            println!("Current val value: {}", val);
         }
-
-        std::thread::sleep(std::time::Duration::from_millis(40));
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
+
     Ok(())
 }

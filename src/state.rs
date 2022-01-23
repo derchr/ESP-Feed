@@ -26,7 +26,8 @@ impl State {
         let page = if setup_mode {
             ConfigPage.into()
         } else {
-            ExamplePage.into()
+            // ExamplePage.into()
+            FeedPage.into()
         };
 
         Self {

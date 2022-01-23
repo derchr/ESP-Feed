@@ -1,6 +1,7 @@
 pub mod display;
 pub mod pages;
 mod style;
+mod views;
 
 use crate::state::State;
 use display::Display;
@@ -20,22 +21,11 @@ pub fn draw_pages(display: &mut Display, state: Arc<Mutex<State>>) -> Result<()>
             let page = &state.page;
 
             display.clear();
-            {
-                let mut cropped = display.cropped(&Rectangle {
-                    top_left: Point::zero(),
-                    size: Size {
-                        width: state.width,
-                        height: 64,
-                    },
-                });
-
-                page.draw(&mut cropped, &state).unwrap();
-            }
+            page.draw(display, &state).unwrap();
         }
         display.flush().unwrap();
 
         // std::thread::sleep(std::time::Duration::from_secs(0xFFFF_FFFF_FFFF_FFFF));
-        // std::thread::sleep(Duration::from_secs(1));
-        std::thread::sleep(Duration::from_millis(10));
+        std::thread::sleep(Duration::from_secs(1));
     }
 }
