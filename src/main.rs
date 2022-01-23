@@ -40,16 +40,38 @@ fn main() -> Result<()> {
     let sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
     let default_nvs = Arc::new(EspDefaultNvs::new()?);
 
-    let var = Arc::new(esp_idf_hal::interrupt::Mutex::new(0u8));
-    let var_cloned = Arc::clone(&var);
+    let btn1_state = Arc::new(esp_idf_hal::interrupt::Mutex::new(false));
+    let btn1_state_cloned = Arc::clone(&btn1_state);
 
-    let handle = move || {
-        let mut value = var_cloned.lock();
-        *value += 1;
+    let button_handle = {
+        let mut last_tick = 0;
+        let mut last_pressed = false;
+
+        move || {
+            let mut pressed = btn1_state_cloned.lock();
+
+            // Assume tick rate is 100 Hz. Wait for at least 5 ticks (50ms).
+            // TODO: Get the real tick rate from the config variable.
+            let current_tick = unsafe { esp_idf_sys::xTaskGetTickCountFromISR() };
+            if current_tick - last_tick < 5 {
+                return;
+            } else {
+                last_tick = current_tick;
+            }
+
+            if last_pressed {
+                last_pressed = false;
+                return;
+            } else {
+                last_pressed = true;
+            }
+
+            *pressed = true;
+        }
     };
 
     unsafe {
-        esp_idf_sys::gpio_set_intr_type(13, esp_idf_sys::GPIO_INT_TYPE_GPIO_PIN_INTR_POSEDGE);
+        esp_idf_sys::gpio_set_intr_type(13, esp_idf_sys::GPIO_INT_TYPE_GPIO_PIN_INTR_ANYEDGE);
         esp_idf_sys::gpio_install_isr_service(0);
 
         fn add_isr_handler<F>(f: F)
@@ -64,6 +86,8 @@ fn main() -> Result<()> {
 
             let cb: Box<Box<dyn FnMut() -> ()>> = Box::new(Box::new(f));
             unsafe {
+                // Note: This leaks the closure, but it's fine as it
+                // has live until the end of the program anyways.
                 esp_idf_sys::gpio_isr_handler_add(
                     13,
                     Some(isr_handler),
@@ -72,15 +96,14 @@ fn main() -> Result<()> {
             }
         }
 
-        add_isr_handler(handle);
-        // esp_idf_sys::gpio_isr_handler_add(13, Some(handler), std::ptr::null_mut());
+        add_isr_handler(button_handle);
     }
 
     let mut nvs_controller = NvsController::new(Arc::clone(&default_nvs))?;
-    // nvs_controller.store_wifi_config(&state::WifiConfig {
-    //     ssid: wifi::SSID.into(),
-    //     pass: wifi::PASS.into(),
-    // })?;
+    nvs_controller.store_wifi_config(&state::WifiConfig {
+        ssid: wifi::SSID.into(),
+        pass: wifi::PASS.into(),
+    })?;
     let wifi_config = nvs_controller.get_wifi_config().ok();
 
     let mut display = display::get_display(pins.gpio27, pins.gpio26, peripherals.i2c0);
@@ -126,7 +149,7 @@ fn main() -> Result<()> {
     std::mem::forget(_sntp);
 
     {
-        let ref mut controller = state.lock().unwrap().feed_controller;
+        let mut controller = &mut state.lock().unwrap().feed_controller;
         let urls = [
             url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url"),
             url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml")
@@ -138,10 +161,20 @@ fn main() -> Result<()> {
 
     loop {
         {
-            let val = *var.lock();
-            println!("Current val value: {}", val);
+            let val = {
+                let mut val = btn1_state.lock();
+                let old_val = *val;
+                if old_val {
+                    *val = false;
+                }
+                old_val
+            };
+
+            if val {
+                println!("Button pressed!");
+            }
         }
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
 
     Ok(())
