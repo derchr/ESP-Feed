@@ -1,6 +1,6 @@
 use esp_feed::{
-    datetime, feed, graphics, graphics::display, nvs::NvsController, server, state,
-    storage::StorageHandle, weather, wifi,
+    command::Command, datetime, graphics, graphics::display, nvs::NvsController, server, state,
+    storage::StorageHandle, wifi,
 };
 
 use anyhow::{Context, Result};
@@ -9,8 +9,10 @@ use embedded_hal::digital::v2::InputPin;
 use esp_idf_hal::prelude::*;
 use esp_idf_svc::{netif::*, nvs::*, sysloop::*};
 use esp_idf_sys; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
-use std::io::{Read, Write};
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    mpsc::{channel, RecvTimeoutError},
+    Arc, Mutex,
+};
 
 fn setup_logging() {
     esp_idf_svc::log::EspLogger::initialize_default();
@@ -32,23 +34,22 @@ fn main() -> Result<()> {
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
 
-    let interrupt_pin = pins.gpio13.into_input().unwrap();
-    let setup_button = pins.gpio35.into_input().unwrap();
-    let setup_mode = setup_button.is_high().unwrap();
+    let button_pin = pins.gpio13.into_input().unwrap();
+    let setup_mode = button_pin.is_low().unwrap();
 
     let netif_stack = Arc::new(EspNetifStack::new()?);
     let sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
     let default_nvs = Arc::new(EspDefaultNvs::new()?);
 
     let btn1_state = Arc::new(esp_idf_hal::interrupt::Mutex::new(false));
-    let btn1_state_cloned = Arc::clone(&btn1_state);
 
     let button_handle = {
+        let btn1_state = Arc::clone(&btn1_state);
         let mut last_tick = 0;
         let mut last_pressed = false;
 
         move || {
-            let mut pressed = btn1_state_cloned.lock();
+            let mut pressed = btn1_state.lock();
 
             // Assume tick rate is 100 Hz. Wait for at least 5 ticks (50ms).
             // TODO: Get the real tick rate from the config variable.
@@ -100,10 +101,6 @@ fn main() -> Result<()> {
     }
 
     let mut nvs_controller = NvsController::new(Arc::clone(&default_nvs))?;
-    nvs_controller.store_wifi_config(&state::WifiConfig {
-        ssid: wifi::SSID.into(),
-        pass: wifi::PASS.into(),
-    })?;
     let wifi_config = nvs_controller.get_wifi_config().ok();
 
     let mut display = display::get_display(pins.gpio27, pins.gpio26, peripherals.i2c0);
@@ -112,6 +109,8 @@ fn main() -> Result<()> {
         setup_mode,
         wifi_config.clone(),
     )));
+
+    let (command_tx, command_rx) = channel();
 
     {
         let state = Arc::clone(&state);
@@ -138,44 +137,73 @@ fn main() -> Result<()> {
     };
     std::mem::forget(_wifi);
 
-    let _server = server::httpd()?;
+    let _server = server::httpd(command_tx.clone())?;
     std::mem::forget(_server);
-
-    if setup_mode {
-        return Ok(());
-    }
 
     let _sntp = datetime::initialize_time()?;
     std::mem::forget(_sntp);
 
     {
-        let mut controller = &mut state.lock().unwrap().feed_controller;
+        let controller = &mut state.lock().unwrap().feed_controller;
         let urls = [
             url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url"),
             url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml")
                 .expect("Invalid Url"),
         ];
         controller.urls().extend_from_slice(&urls);
-        controller.refresh().context("Could not retrieve feeds.")?;
     }
 
-    loop {
-        {
-            let val = {
-                let mut val = btn1_state.lock();
-                let old_val = *val;
-                if old_val {
-                    *val = false;
-                }
-                old_val
-            };
+    let fetching_thread = {
+        let state = Arc::clone(&state);
 
-            if val {
-                println!("Button pressed!");
+        move || -> Result<()> {
+            loop {
+                {
+                    let controller = &mut state.lock().unwrap().feed_controller;
+                    log::info!("Fetching feeds: {:?}", controller.urls());
+                    controller.refresh().context("Could not retrieve feeds.")?;
+                }
+
+                std::thread::sleep(std::time::Duration::from_secs(300));
             }
         }
-        std::thread::sleep(std::time::Duration::from_millis(10));
-    }
+    };
 
-    Ok(())
+    std::thread::Builder::new()
+        .stack_size(10240)
+        .spawn(fetching_thread)
+        .map_err(|e| anyhow::Error::from(e))
+        .context("Could not create feed fetching thread.")?;
+
+    loop {
+        match command_rx.recv_timeout(std::time::Duration::from_millis(100)) {
+            Ok(Command::SwitchPage) => {
+                state.lock().unwrap().next_page();
+            }
+            Ok(Command::SaveConfig(form)) => {
+                log::info!("Save this config: {:?}", form);
+
+                nvs_controller.store_wifi_config(&wifi::WifiConfig {
+                    ssid: form.ssid,
+                    pass: form.pass,
+                })?;
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                // Check if a button was pressed in the meanwhile.
+                let btn1_pressed = {
+                    let mut pressed = btn1_state.lock();
+                    let old_pressed = *pressed;
+                    if old_pressed {
+                        *pressed = false;
+                    }
+                    old_pressed
+                };
+
+                if btn1_pressed {
+                    command_tx.send(Command::SwitchPage)?;
+                }
+            }
+            _ => {}
+        }
+    }
 }

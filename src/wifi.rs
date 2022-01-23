@@ -1,12 +1,18 @@
-use crate::state::WifiConfig;
 use anyhow::*;
 use embedded_svc::wifi::*;
 use esp_idf_svc::{netif::*, nvs::*, sysloop::*, wifi::*};
 use log::*;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-pub const SSID: &str = env!("WIFI_SSID");
-pub const PASS: &str = env!("WIFI_PASS");
+const SSID: Option<&str> = option_env!("WIFI_SSID");
+const PASS: Option<&str> = option_env!("WIFI_PASS");
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct WifiConfig {
+    pub ssid: String,
+    pub pass: String,
+}
 
 pub fn connect(
     wifi_config: Option<WifiConfig>,
@@ -17,9 +23,9 @@ pub fn connect(
     let mut wifi = EspWifi::new(netif_stack, sys_loop_stack, default_nvs)?;
 
     info!("Wifi created, about to scan");
-    let WifiConfig {ssid, pass} = wifi_config.unwrap_or(WifiConfig {
-        ssid: SSID.to_string(),
-        pass: PASS.to_string()
+    let WifiConfig { ssid, pass } = wifi_config.unwrap_or(WifiConfig {
+        ssid: SSID.unwrap().to_string(),
+        pass: PASS.unwrap().to_string(),
     });
 
     let ap_info_list = wifi.scan()?;

@@ -10,5 +10,3 @@ pub mod state;
 pub mod storage;
 pub mod weather;
 pub mod wifi;
-
-pub use command::Command;

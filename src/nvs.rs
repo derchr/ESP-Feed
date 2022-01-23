@@ -1,6 +1,6 @@
-use crate::state::WifiConfig;
+use crate::wifi::WifiConfig;
 use anyhow::{Context, Result};
-use embedded_svc::{storage::Storage, wifi::Wifi};
+use embedded_svc::storage::Storage;
 use esp_idf_svc::{nvs::EspDefaultNvs, nvs_storage::EspNvsStorage};
 use std::sync::Arc;
 
