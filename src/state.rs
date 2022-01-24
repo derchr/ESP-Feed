@@ -1,18 +1,17 @@
 use crate::{
-    graphics::display::Display,
-    wifi::WifiConfig,
     feed::FeedController,
-    graphics::pages::{ConfigPage, ExamplePage, FeedPage, Page, PageType},
+    graphics::pages::{ConfigPage, ExamplePage, FeedPage, Page, PageType, WeatherPage},
+    weather::WeatherController,
+    wifi::WifiConfig,
 };
-use std::sync::{Arc, Mutex};
 
 pub struct State {
     pub feed_controller: FeedController,
+    pub weather_controller: WeatherController,
     pub setup_mode: bool,
     pub page: PageType,
     pub wifi: Option<WifiConfig>,
     pub location: String,
-    pub width: u32,
 }
 
 impl State {
@@ -20,17 +19,16 @@ impl State {
         let page = if setup_mode {
             ConfigPage.into()
         } else {
-            // ExamplePage.into()
             FeedPage.into()
         };
 
         Self {
             feed_controller: FeedController::new(),
+            weather_controller: WeatherController::new(),
             setup_mode,
             page: page,
             wifi: wifi_config,
             location: String::new(),
-            width: 128,
         }
     }
 
@@ -39,6 +37,7 @@ impl State {
             PageType::ConfigPage(_) => self.page = ConfigPage.into(),
             PageType::ExamplePage(_) => self.page = ExamplePage.into(),
             PageType::FeedPage(_) => self.page = FeedPage.into(),
+            PageType::WeatherPage(_) => self.page = WeatherPage.into(),
         }
     }
 }

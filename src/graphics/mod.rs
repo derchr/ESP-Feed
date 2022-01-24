@@ -8,7 +8,6 @@ use display::Display;
 use pages::Page;
 
 use anyhow::Result;
-use embedded_graphics::{prelude::*, primitives::Rectangle};
 use std::{
     sync::{Arc, Mutex},
     time::Duration,
