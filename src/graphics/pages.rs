@@ -1,18 +1,14 @@
 use super::style;
-use crate::{datetime, definitions, feed::Feed, state::State};
+use crate::{datetime, definitions, state::State};
 
 use anyhow::Result;
 use embedded_graphics::{
     geometry::AnchorPoint,
     geometry::{Point, Size},
-    image::{Image, ImageRawBE},
     pixelcolor::BinaryColor,
     prelude::*,
-    primitives::{
-        Circle, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StrokeAlignment, Triangle,
-    },
-    text::{Alignment, Baseline, Text},
-    transform::Transform,
+    primitives::{Circle, PrimitiveStyle, Rectangle, Triangle},
+    text::{Alignment, Text},
 };
 use embedded_layout::{
     layout::linear::{spacing::DistributeFill, LinearLayout},
@@ -22,12 +18,14 @@ use embedded_text::{style::TextBoxStyleBuilder, TextBox};
 use enum_dispatch::enum_dispatch;
 
 pub struct FeedPage;
+pub struct WeatherPage;
 pub struct ExamplePage;
 pub struct ConfigPage;
 
 #[enum_dispatch(Page)]
 pub enum PageType {
     FeedPage,
+    WeatherPage,
     ExamplePage,
     ConfigPage,
 }
@@ -68,6 +66,39 @@ impl Page for FeedPage {
     }
 
     fn next_page(&self) -> PageType {
+        WeatherPage.into()
+    }
+}
+
+impl Page for WeatherPage {
+    fn draw<D>(&self, target: &mut D, state: &State) -> Result<(), D::Error>
+    where
+        D: DrawTarget<Color = BinaryColor> + Dimensions,
+        D::Color: From<BinaryColor>,
+    {
+        let textbox_style = TextBoxStyleBuilder::new()
+            .alignment(embedded_text::alignment::HorizontalAlignment::Center)
+            .vertical_alignment(embedded_text::alignment::VerticalAlignment::Middle)
+            .build();
+
+        if let Some(report) = state.weather_controller.current() {
+            let text = &format!(
+                "{}\n{}\n\nTemperatur: {}°C",
+                report.name, report.description, report.temp
+            );
+            TextBox::with_textbox_style(
+                &text,
+                target.bounding_box(),
+                style::normal_text(),
+                textbox_style,
+            )
+            .draw(target)?;
+        }
+
+        Ok(())
+    }
+
+    fn next_page(&self) -> PageType {
         ExamplePage.into()
     }
 }
@@ -80,7 +111,7 @@ impl Page for ExamplePage {
     {
         let fill = PrimitiveStyle::with_fill(BinaryColor::On);
 
-        let yOffset = 10;
+        let y_offset = 10;
 
         let bounding_box = target.bounding_box();
 
@@ -99,14 +130,13 @@ impl Page for ExamplePage {
         // Draw a circle with a 3px wide stroke.
         let circle = Circle::new(Point::zero(), 17).into_styled(style::thick_stroke());
 
-        let shapes =
-            LinearLayout::horizontal(Chain::new(triangle).append(rectangle).append(circle))
-                .with_spacing(DistributeFill(bounding_box.size.width - 32))
-                .with_alignment(vertical::Center)
-                .arrange()
-                .align_to(&bounding_box, horizontal::Center, vertical::Top)
-                .translate(Point { x: 0, y: yOffset })
-                .draw(target)?;
+        LinearLayout::horizontal(Chain::new(triangle).append(rectangle).append(circle))
+            .with_spacing(DistributeFill(bounding_box.size.width - 32))
+            .with_alignment(vertical::Center)
+            .arrange()
+            .align_to(&bounding_box, horizontal::Center, vertical::Top)
+            .translate(Point { x: 0, y: y_offset })
+            .draw(target)?;
 
         let textbox_style = TextBoxStyleBuilder::new()
             .alignment(embedded_text::alignment::HorizontalAlignment::Center)
@@ -128,7 +158,6 @@ impl Page for ExamplePage {
                     .expect("Invalid format.");
 
             let time = datetime.format(&format).expect("Could not format time.");
-            // let text = String::from("embedded-graphics\n") + &time;
 
             TextBox::with_textbox_style(
                 &time,
@@ -163,7 +192,7 @@ impl Page for ExamplePage {
 }
 
 impl Page for ConfigPage {
-    fn draw<D>(&self, target: &mut D, state: &State) -> Result<(), D::Error>
+    fn draw<D>(&self, target: &mut D, _: &State) -> Result<(), D::Error>
     where
         D: DrawTarget<Color = BinaryColor> + Dimensions,
         D::Color: From<BinaryColor>,

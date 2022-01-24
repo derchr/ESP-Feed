@@ -2,7 +2,6 @@ use crate::command::Command;
 use anyhow::{Context, Result};
 use embedded_svc::httpd::{registry::Registry, Handler, Method, Response};
 use esp_idf_svc::httpd::Server;
-use log::*;
 use serde::Deserialize;
 use std::{fs::File, sync::mpsc::Sender};
 

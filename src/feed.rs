@@ -5,22 +5,23 @@ use embedded_svc::{
 };
 use esp_idf_svc::http::client::EspHttpClient;
 use log::*;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use url::Url;
 
-pub struct ScrollState {
-    position: u32,
-    forward: bool,
-}
+// pub struct ScrollState {
+//     position: u32,
+//     forward: bool,
+// }
 
-impl Default for ScrollState {
-    fn default() -> Self {
-        Self {
-            position: 0,
-            forward: true,
-        }
-    }
-}
+// impl Default for ScrollState {
+//     fn default() -> Self {
+//         Self {
+//             position: 0,
+//             forward: true,
+//         }
+//     }
+// }
+
 pub struct Feed {
     pub title: String,
     pub headlines: Vec<String>,
@@ -68,7 +69,7 @@ impl FeedController {
         Ok(())
     }
 
-    pub fn urls(&mut self) -> &mut Vec<Url> {
+    pub fn urls_mut(&mut self) -> &mut Vec<Url> {
         &mut self.urls
     }
 

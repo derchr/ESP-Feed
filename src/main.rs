@@ -4,19 +4,19 @@ use esp_feed::{
 };
 
 use anyhow::{Context, Result};
-// use embedded_hal::digital::blocking::InputPin;
 use embedded_hal::digital::v2::InputPin;
 use esp_idf_hal::prelude::*;
-use esp_idf_svc::{netif::*, nvs::*, sysloop::*};
+use esp_idf_svc::{log::EspLogger, netif::*, nvs::*, sysloop::*};
 use esp_idf_sys; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
+use log::*;
 use std::sync::{
     mpsc::{channel, RecvTimeoutError},
     Arc, Mutex,
 };
 
 fn setup_logging() {
-    esp_idf_svc::log::EspLogger::initialize_default();
-    esp_idf_svc::log::EspLogger.set_target_level("*", log::LevelFilter::Debug);
+    EspLogger::initialize_default();
+    EspLogger.set_target_level("*", LevelFilter::Debug);
 
     // std::env::set_var("RUST_BACKTRACE", "1");
 }
@@ -88,7 +88,7 @@ fn main() -> Result<()> {
             let cb: Box<Box<dyn FnMut() -> ()>> = Box::new(Box::new(f));
             unsafe {
                 // Note: This leaks the closure, but it's fine as it
-                // has live until the end of the program anyways.
+                // has to live until the end of the program anyways.
                 esp_idf_sys::gpio_isr_handler_add(
                     13,
                     Some(isr_handler),
@@ -135,13 +135,9 @@ fn main() -> Result<()> {
             Err(_) => wifi::create_accesspoint(netif_stack, sys_loop_stack, default_nvs.clone())?,
         }
     };
-    std::mem::forget(_wifi);
 
     let _server = server::httpd(command_tx.clone())?;
-    std::mem::forget(_server);
-
     let _sntp = datetime::initialize_time()?;
-    std::mem::forget(_sntp);
 
     {
         let controller = &mut state.lock().unwrap().feed_controller;
@@ -150,7 +146,7 @@ fn main() -> Result<()> {
             url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml")
                 .expect("Invalid Url"),
         ];
-        controller.urls().extend_from_slice(&urls);
+        controller.urls_mut().extend_from_slice(&urls);
     }
 
     let fetching_thread = {
@@ -159,9 +155,18 @@ fn main() -> Result<()> {
         move || -> Result<()> {
             loop {
                 {
-                    let controller = &mut state.lock().unwrap().feed_controller;
-                    log::info!("Fetching feeds: {:?}", controller.urls());
-                    controller.refresh().context("Could not retrieve feeds.")?;
+                    let state = &mut state.lock().unwrap();
+                    let feed_controller = &mut state.feed_controller;
+                    info!("Fetching feeds: {:?}", feed_controller.urls_mut());
+                    feed_controller
+                        .refresh()
+                        .context("Could not retrieve feeds.")?;
+
+                    let weather_controller = &mut state.weather_controller;
+                    info!("Fetching weather.");
+                    weather_controller
+                        .refresh()
+                        .context("Could not retrieve weather data.")?;
                 }
 
                 std::thread::sleep(std::time::Duration::from_secs(300));
@@ -181,7 +186,7 @@ fn main() -> Result<()> {
                 state.lock().unwrap().next_page();
             }
             Ok(Command::SaveConfig(form)) => {
-                log::info!("Save this config: {:?}", form);
+                info!("Save this config: {:?}", form);
 
                 nvs_controller.store_wifi_config(&wifi::WifiConfig {
                     ssid: form.ssid,
