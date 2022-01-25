@@ -54,7 +54,7 @@ impl Page for FeedPage {
         if let Some(feed) = state.feed_controller.feeds().get(0) {
             let text = feed.headlines.get(0).unwrap();
             TextBox::with_textbox_style(
-                &text,
+                text,
                 target.bounding_box(),
                 style::normal_text(),
                 textbox_style,
@@ -87,7 +87,7 @@ impl Page for WeatherPage {
                 report.name, report.description, report.temp
             );
             TextBox::with_textbox_style(
-                &text,
+                text,
                 target.bounding_box(),
                 style::normal_text(),
                 textbox_style,

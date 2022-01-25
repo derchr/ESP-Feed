@@ -26,7 +26,7 @@ impl State {
             feed_controller: FeedController::new(),
             weather_controller: WeatherController::new(),
             setup_mode,
-            page: page,
+            page,
             wifi: wifi_config,
             location: String::new(),
         }

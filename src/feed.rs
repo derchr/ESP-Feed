@@ -78,6 +78,12 @@ impl FeedController {
     }
 }
 
+impl Default for FeedController {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn parse_rss_feed(reader: &mut impl BufRead) -> Result<Feed> {
     let mut first_title = true;
     let mut title_follows = false;
