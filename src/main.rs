@@ -7,7 +7,6 @@ use anyhow::{Context, Result};
 use embedded_hal::digital::v2::InputPin;
 use esp_idf_hal::prelude::*;
 use esp_idf_svc::{log::EspLogger, netif::*, nvs::*, sysloop::*};
-use esp_idf_sys; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use log::*;
 use std::sync::{
     mpsc::{channel, RecvTimeoutError},
@@ -18,6 +17,7 @@ fn setup_logging() {
     EspLogger::initialize_default();
     EspLogger.set_target_level("*", LevelFilter::Debug);
 
+    // No longer working with ESP-IDF 4.3.1+
     // std::env::set_var("RUST_BACKTRACE", "1");
 }
 
@@ -25,11 +25,9 @@ fn main() -> Result<()> {
     // Temporary. Will disappear once ESP-IDF 4.4 is released, but for now it is necessary to call this function once,
     // or else some patches to the runtime implemented by esp-idf-sys might not link properly.
     esp_idf_sys::link_patches();
-
     setup_logging();
 
     let _storage_handle = StorageHandle::new();
-    std::mem::forget(_storage_handle);
 
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
@@ -75,17 +73,14 @@ fn main() -> Result<()> {
         esp_idf_sys::gpio_set_intr_type(13, esp_idf_sys::GPIO_INT_TYPE_GPIO_PIN_INTR_ANYEDGE);
         esp_idf_sys::gpio_install_isr_service(0);
 
-        fn add_isr_handler<F>(f: F)
-        where
-            F: FnMut() -> (),
-            F: 'static,
-        {
+        fn add_isr_handler(f: impl FnMut() + 'static) {
             extern "C" fn isr_handler(arg: *mut std::ffi::c_void) {
-                let closure: &mut Box<dyn FnMut() -> ()> = unsafe { std::mem::transmute(arg) };
+                let closure: &mut Box<dyn FnMut()> =
+                    unsafe { &mut *(arg as *mut Box<dyn FnMut()>) };
                 closure();
             }
 
-            let cb: Box<Box<dyn FnMut() -> ()>> = Box::new(Box::new(f));
+            let cb: Box<Box<dyn FnMut()>> = Box::new(Box::new(f));
             unsafe {
                 // Note: This leaks the closure, but it's fine as it
                 // has to live until the end of the program anyways.
@@ -118,21 +113,20 @@ fn main() -> Result<()> {
         std::thread::Builder::new()
             .stack_size(10240)
             .spawn(move || graphics::draw_pages(&mut display, state))
-            .map_err(|e| anyhow::Error::from(e))
             .context("Could not create display thread.")?;
     }
 
     let _wifi = if setup_mode {
-        wifi::create_accesspoint(netif_stack, sys_loop_stack, default_nvs.clone())?
+        wifi::create_accesspoint(netif_stack, sys_loop_stack, default_nvs)?
     } else {
         match wifi::connect(
-            wifi_config.clone(),
+            wifi_config,
             Arc::clone(&netif_stack),
             Arc::clone(&sys_loop_stack),
             Arc::clone(&default_nvs),
         ) {
             Ok(wifi) => wifi,
-            Err(_) => wifi::create_accesspoint(netif_stack, sys_loop_stack, default_nvs.clone())?,
+            Err(_) => wifi::create_accesspoint(netif_stack, sys_loop_stack, default_nvs)?,
         }
     };
 
@@ -177,7 +171,6 @@ fn main() -> Result<()> {
     std::thread::Builder::new()
         .stack_size(10240)
         .spawn(fetching_thread)
-        .map_err(|e| anyhow::Error::from(e))
         .context("Could not create feed fetching thread.")?;
 
     loop {

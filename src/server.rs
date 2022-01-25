@@ -58,7 +58,7 @@ pub fn httpd(command_tx: Sender<Command>) -> Result<Server> {
         .handler(weather())?
         .at("/")
         .post(move |mut req| {
-            let body = req.as_string().unwrap_or("".into());
+            let body = req.as_string()?;
 
             let form: FormData = serde_json::from_str(&body).unwrap();
             command_tx.send(Command::SaveConfig(form))?;

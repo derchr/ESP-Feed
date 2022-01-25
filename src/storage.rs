@@ -34,6 +34,12 @@ impl StorageHandle {
     }
 }
 
+impl Default for StorageHandle {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Drop for StorageHandle {
     fn drop(&mut self) {
         unsafe {

@@ -46,8 +46,8 @@ pub fn connect(
     };
 
     let configuration = Configuration::Client(ClientConfiguration {
-        ssid: ssid.into(),
-        password: pass.into(),
+        ssid,
+        password: pass,
         channel,
         ..Default::default()
     });

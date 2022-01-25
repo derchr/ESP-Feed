@@ -109,3 +109,9 @@ impl WeatherController {
         Ok(report)
     }
 }
+
+impl Default for WeatherController {
+    fn default() -> Self {
+        Self::new()
+    }
+}
