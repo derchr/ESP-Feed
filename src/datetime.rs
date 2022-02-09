@@ -8,7 +8,7 @@ pub fn initialize_time() -> Result<esp_idf_svc::sntp::EspSntp> {
     // TODO remove
     // while sntp.get_sync_status() != esp_idf_svc::sntp::SyncStatus::Completed {}
     // let unixtime = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-    // info!("Current unix time: {}", unixtime.as_secs());
+    // log::info!("Current unix time: {}", unixtime.as_secs());
 
     let tz_var = std::ffi::CString::new("TZ").unwrap();
     let german_tz = std::ffi::CString::new("CET-1CEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00").unwrap();

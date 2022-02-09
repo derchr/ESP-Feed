@@ -19,7 +19,9 @@ impl State {
         let page = if setup_mode {
             ConfigPage.into()
         } else {
-            FeedPage.into()
+            // FeedPage.into()
+            // ExamplePage.into()
+            WeatherPage.into()
         };
 
         Self {
@@ -39,5 +41,7 @@ impl State {
             PageType::FeedPage(_) => self.page = FeedPage.into(),
             PageType::WeatherPage(_) => self.page = WeatherPage.into(),
         }
+
+        log::info!("Switched page to {:?}", self.page);
     }
 }

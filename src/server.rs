@@ -1,4 +1,4 @@
-use crate::command::Command;
+use crate::{command::Command, storage::BASE_DIR};
 use anyhow::{Context, Result};
 use embedded_svc::httpd::{registry::Registry, Handler, Method, Response};
 use esp_idf_svc::httpd::Server;
@@ -14,7 +14,7 @@ pub struct FormData {
 
 fn favicon_handler() -> Handler {
     Handler::new("/favicon.ico", Method::Get, |_| {
-        let favicon_path = "/mnt/favicon.ico";
+        let favicon_path = &format!("{}/favicon.ico", BASE_DIR);
         let favicon = File::open(favicon_path)
             .with_context(|| format!("Could not find favicon: {}", favicon_path))?;
 
@@ -26,7 +26,7 @@ fn favicon_handler() -> Handler {
 
 fn weather() -> Handler {
     Handler::new("/weather", Method::Get, |_| {
-        let path = "/mnt/01d.png";
+        let path = &format!("{}/01d.png", BASE_DIR);
         let icon =
             File::open(path).with_context(|| format!("Could not find weather icon: {}", path))?;
 
@@ -40,11 +40,11 @@ pub fn httpd(command_tx: Sender<Command>) -> Result<Server> {
     let server = esp_idf_svc::httpd::ServerRegistry::new()
         .at("/")
         .get(|_| {
-            Ok(include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/resources/settings.html"
-            ))
-            .into())
+            let settings_path = &format!("{}/settings.htm", BASE_DIR);
+            let settings = File::open(settings_path)
+                .with_context(|| format!("Could not find html: {}", settings_path))?;
+
+            Ok(settings.into())
         })?
         .at("/simple")
         .get(|_| {

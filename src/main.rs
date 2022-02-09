@@ -1,12 +1,13 @@
 use esp_feed::{
-    command::Command, datetime, graphics, graphics::display, nvs::NvsController, server, state,
-    storage::StorageHandle, wifi,
+    command::Command, datetime, graphics, graphics::display, interrupt, nvs::NvsController, server,
+    state, storage::StorageHandle, wifi,
 };
 
 use anyhow::{Context, Result};
 use embedded_hal::digital::v2::InputPin;
-use esp_idf_hal::prelude::*;
+use esp_idf_hal::{gpio::Pin, prelude::*};
 use esp_idf_svc::{log::EspLogger, netif::*, nvs::*, sysloop::*};
+use esp_idf_sys as _; // Always keep it imported
 use log::*;
 use std::sync::{
     mpsc::{channel, RecvTimeoutError},
@@ -15,7 +16,10 @@ use std::sync::{
 
 fn setup_logging() {
     EspLogger::initialize_default();
-    EspLogger.set_target_level("*", LevelFilter::Debug);
+
+    // In release build the CONFIG_LOG_MAXIMUM_LEVEL should be set to Warn.
+    // TODO: Still doesn't work.
+    EspLogger.set_target_level("esp_feed", LevelFilter::Info);
 
     // No longer working with ESP-IDF 4.3.1+
     // std::env::set_var("RUST_BACKTRACE", "1");
@@ -27,92 +31,51 @@ fn main() -> Result<()> {
     esp_idf_sys::link_patches();
     setup_logging();
 
+    // Refer to "ECO_and_Workarounds_for_Bugs_in_ESP32" section 3.11.
+    // A proposed workaround is to call this function once.
+    unsafe { esp_idf_sys::adc_power_acquire() };
+
     let _storage_handle = StorageHandle::new();
 
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
 
-    let button_pin = pins.gpio13.into_input().unwrap();
+    let button_pin = pins.gpio39.into_input().unwrap();
     let setup_mode = button_pin.is_low().unwrap();
 
     let netif_stack = Arc::new(EspNetifStack::new()?);
     let sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
     let default_nvs = Arc::new(EspDefaultNvs::new()?);
 
-    let btn1_state = Arc::new(esp_idf_hal::interrupt::Mutex::new(false));
-
-    let button_handle = {
-        let btn1_state = Arc::clone(&btn1_state);
-        let mut last_tick = 0;
-        let mut last_pressed = false;
-
-        move || {
-            let mut pressed = btn1_state.lock();
-
-            // Assume tick rate is 100 Hz. Wait for at least 5 ticks (50ms).
-            // TODO: Get the real tick rate from the config variable.
-            let current_tick = unsafe { esp_idf_sys::xTaskGetTickCountFromISR() };
-            if current_tick - last_tick < 5 {
-                return;
-            } else {
-                last_tick = current_tick;
-            }
-
-            if last_pressed {
-                last_pressed = false;
-                return;
-            } else {
-                last_pressed = true;
-            }
-
-            *pressed = true;
-        }
-    };
-
-    unsafe {
-        esp_idf_sys::gpio_set_intr_type(13, esp_idf_sys::GPIO_INT_TYPE_GPIO_PIN_INTR_ANYEDGE);
-        esp_idf_sys::gpio_install_isr_service(0);
-
-        fn add_isr_handler(f: impl FnMut() + 'static) {
-            extern "C" fn isr_handler(arg: *mut std::ffi::c_void) {
-                let closure: &mut Box<dyn FnMut()> =
-                    unsafe { &mut *(arg as *mut Box<dyn FnMut()>) };
-                closure();
-            }
-
-            let cb: Box<Box<dyn FnMut()>> = Box::new(Box::new(f));
-            unsafe {
-                // Note: This leaks the closure, but it's fine as it
-                // has to live until the end of the program anyways.
-                esp_idf_sys::gpio_isr_handler_add(
-                    13,
-                    Some(isr_handler),
-                    Box::into_raw(cb) as *mut _,
-                );
-            }
-        }
-
-        add_isr_handler(button_handle);
-    }
+    let button1_state = interrupt::register_button_interrupt(button_pin.pin());
 
     let mut nvs_controller = NvsController::new(Arc::clone(&default_nvs))?;
     let wifi_config = nvs_controller.get_wifi_config().ok();
 
-    let mut display = display::get_display(pins.gpio27, pins.gpio26, peripherals.i2c0);
+    let (command_tx, command_rx) = channel();
+    let (update_page_tx, update_page_rx) = channel();
 
     let state = Arc::new(Mutex::new(state::State::new(
         setup_mode,
         wifi_config.clone(),
     )));
 
-    let (command_tx, command_rx) = channel();
+    //let mut display = display::get_display(pins.gpio27, pins.gpio26, peripherals.i2c0);
+    let spi3 = peripherals.spi3;
+    let busy = pins.gpio4.into_input()?;
+    let rst = pins.gpio16.into_output()?;
+    let dc = pins.gpio17.into_output()?;
+    let cs = pins.gpio5.into_output()?;
+    let sclk = pins.gpio18;
+    let mosi = pins.gpio23;
 
+    let mut display = display::get_epd_display(busy, rst, dc, cs, sclk, mosi, spi3)?;
     {
         let state = Arc::clone(&state);
 
         std::thread::Builder::new()
             .stack_size(10240)
-            .spawn(move || graphics::draw_pages(&mut display, state))
+            .spawn(move || graphics::draw_pages(&mut display, state, update_page_rx))
             .context("Could not create display thread.")?;
     }
 
@@ -146,21 +109,29 @@ fn main() -> Result<()> {
     let fetching_thread = {
         let state = Arc::clone(&state);
 
-        move || -> Result<()> {
+        move || {
+            fn fetch_data(state: &mut state::State) -> Result<()> {
+                let feed_controller = &mut state.feed_controller;
+                info!("Fetching feeds: {:?}", feed_controller.urls_mut());
+                feed_controller
+                    .refresh()
+                    .context("Could not retrieve feeds.")?;
+
+                let weather_controller = &mut state.weather_controller;
+                info!("Fetching weather.");
+                weather_controller
+                    .refresh()
+                    .context("Could not retrieve weather data.")?;
+                Ok(())
+            }
+
             loop {
                 {
                     let state = &mut state.lock().unwrap();
-                    let feed_controller = &mut state.feed_controller;
-                    info!("Fetching feeds: {:?}", feed_controller.urls_mut());
-                    feed_controller
-                        .refresh()
-                        .context("Could not retrieve feeds.")?;
 
-                    let weather_controller = &mut state.weather_controller;
-                    info!("Fetching weather.");
-                    weather_controller
-                        .refresh()
-                        .context("Could not retrieve weather data.")?;
+                    if let Err(e) = fetch_data(state) {
+                        log::warn!("{:?}", e.context("Could not retrieve new data."));
+                    }
                 }
 
                 std::thread::sleep(std::time::Duration::from_secs(300));
@@ -173,10 +144,14 @@ fn main() -> Result<()> {
         .spawn(fetching_thread)
         .context("Could not create feed fetching thread.")?;
 
+    // Update page to show new data.
+    update_page_tx.send(())?;
+
     loop {
         match command_rx.recv_timeout(std::time::Duration::from_millis(100)) {
             Ok(Command::SwitchPage) => {
                 state.lock().unwrap().next_page();
+                update_page_tx.send(())?;
             }
             Ok(Command::SaveConfig(form)) => {
                 info!("Save this config: {:?}", form);
@@ -189,7 +164,7 @@ fn main() -> Result<()> {
             Err(RecvTimeoutError::Timeout) => {
                 // Check if a button was pressed in the meanwhile.
                 let btn1_pressed = {
-                    let mut pressed = btn1_state.lock();
+                    let mut pressed = button1_state.lock();
                     let old_pressed = *pressed;
                     if old_pressed {
                         *pressed = false;
