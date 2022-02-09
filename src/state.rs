@@ -15,11 +15,13 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(setup_mode: bool, wifi_config: Option<WifiConfig>) -> Self {
+    pub fn new(setup_mode: bool, wifi_config: Option<WifiConfig>, location: String) -> Self {
         let page = if setup_mode {
             ConfigPage.into()
         } else {
-            FeedPage.into()
+            // FeedPage.into()
+            // ExamplePage.into()
+            WeatherPage.into()
         };
 
         Self {
@@ -28,7 +30,7 @@ impl State {
             setup_mode,
             page,
             wifi: wifi_config,
-            location: String::new(),
+            location,
         }
     }
 
@@ -39,5 +41,7 @@ impl State {
             PageType::FeedPage(_) => self.page = FeedPage.into(),
             PageType::WeatherPage(_) => self.page = WeatherPage.into(),
         }
+
+        log::info!("Switched page to {:?}", self.page);
     }
 }

@@ -8,7 +8,7 @@ pub fn initialize_time() -> Result<esp_idf_svc::sntp::EspSntp> {
     // TODO remove
     // while sntp.get_sync_status() != esp_idf_svc::sntp::SyncStatus::Completed {}
     // let unixtime = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-    // info!("Current unix time: {}", unixtime.as_secs());
+    // log::info!("Current unix time: {}", unixtime.as_secs());
 
     let tz_var = std::ffi::CString::new("TZ").unwrap();
     let german_tz = std::ffi::CString::new("CET-1CEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00").unwrap();
@@ -19,6 +19,15 @@ pub fn initialize_time() -> Result<esp_idf_svc::sntp::EspSntp> {
     }
 
     Ok(sntp)
+}
+
+pub fn get_datetime_from_unix(unixtime: i32) -> Result<PrimitiveDateTime> {
+    let tm = unsafe { *esp_idf_sys::localtime(&unixtime) };
+    let month = Month::try_from(1u8 + tm.tm_mon as u8)?;
+    let date = Date::from_calendar_date(1900 + tm.tm_year, month, tm.tm_mday as _)?;
+    let time = Time::from_hms(tm.tm_hour as _, tm.tm_min as _, tm.tm_sec as _)?;
+
+    Ok(PrimitiveDateTime::new(date, time))
 }
 
 pub fn get_datetime() -> Result<PrimitiveDateTime> {

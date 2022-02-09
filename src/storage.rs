@@ -1,5 +1,7 @@
 use esp_idf_sys::wl_handle_t;
-use std::ffi::CString;
+use std::{ffi::CString, fs::File, io::Read};
+
+pub const BASE_DIR: &str = "/mnt";
 
 pub struct StorageHandle {
     wl_handle: wl_handle_t,
@@ -8,7 +10,7 @@ pub struct StorageHandle {
 
 impl StorageHandle {
     pub fn new() -> Self {
-        let base_path = CString::new("/mnt").expect("Invalid CString.");
+        let base_path = CString::new(BASE_DIR).expect("Invalid CString.");
         let partition_label = CString::new("storage").expect("Invalid CString.");
 
         let fat_cfg = esp_idf_sys::esp_vfs_fat_mount_config_t {
@@ -45,5 +47,24 @@ impl Drop for StorageHandle {
         unsafe {
             esp_idf_sys::esp_vfs_fat_spiflash_unmount(self.base_path.as_ptr(), self.wl_handle);
         }
+    }
+}
+
+pub trait ReadFile {
+    fn raw_bytes(&mut self) -> Vec<u8>;
+}
+
+impl ReadFile for File {
+    fn raw_bytes(&mut self) -> Vec<u8> {
+        let mut out = Vec::new();
+        let mut buf = [0u8; 256];
+
+        while {
+            let len = self.read(&mut buf).unwrap();
+            out.extend_from_slice(&buf[..len]);
+            len != 0
+        } {}
+
+        out
     }
 }

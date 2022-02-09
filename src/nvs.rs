@@ -32,4 +32,24 @@ impl NvsController {
 
         Ok(config)
     }
+
+    pub fn get_string(&self, key: &str) -> Result<String> {
+        let value = self
+            .storage
+            .get(key)?
+            .with_context(|| format!("Could not get key \"{}\" from NVS", key))?;
+
+        Ok(value)
+    }
+
+    pub fn store_string(&mut self, key: &str, value: &String) -> Result<()> {
+        self.storage.put(key, value).with_context(|| {
+            format!(
+                "Could not store key \"{}\" with value \"{}\" into NVS",
+                key, value
+            )
+        })?;
+
+        Ok(())
+    }
 }

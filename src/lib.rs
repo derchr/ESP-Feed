@@ -1,9 +1,9 @@
 pub mod command;
 pub mod datetime;
 mod definitions;
-pub mod interrupt;
 pub mod feed;
 pub mod graphics;
+pub mod interrupt;
 pub mod nvs;
 pub mod server;
 pub mod state;
