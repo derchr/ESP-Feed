@@ -8,6 +8,7 @@ use std::{fs::File, sync::mpsc::Sender};
 #[derive(Deserialize, Debug, Clone)]
 pub struct FormData {
     pub name: String,
+    pub location: String,
     pub ssid: String,
     pub pass: String,
 }
@@ -48,11 +49,11 @@ pub fn httpd(command_tx: Sender<Command>) -> Result<Server> {
         })?
         .at("/simple")
         .get(|_| {
-            Ok(include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/resources/simple.html"
-            ))
-            .into())
+            let settings_path = &format!("{}/simple.htm", BASE_DIR);
+            let settings = File::open(settings_path)
+                .with_context(|| format!("Could not find html: {}", settings_path))?;
+
+            Ok(settings.into())
         })?
         .handler(favicon_handler())?
         .handler(weather())?

@@ -96,6 +96,7 @@ pub fn draw_pages(
                     text_style,
                     text_box_left_style,
                 )
+                .translate(Point::new(1, 0)) // TODO remove border bug
                 .draw(display.display.as_mut())?;
                 TextBox::with_textbox_style(
                     &time,
@@ -107,12 +108,14 @@ pub fn draw_pages(
             }
 
             TextBox::with_textbox_style(
-                "Percentage",
+                &state.location,
                 status_bar_area,
                 text_style,
                 text_box_right_style,
             )
             .draw(display.display.as_mut())?;
+
+            // TODO: Percentage
 
             let page_area = Rectangle::new(
                 Point::new(0, height),

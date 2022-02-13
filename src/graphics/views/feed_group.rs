@@ -11,41 +11,58 @@ use embedded_layout::{
     prelude::*,
 };
 use embedded_layout_macros::ViewGroup;
+use embedded_text::{
+    style::{HeightMode, TextBoxStyleBuilder},
+    TextBox,
+};
 
-#[derive(ViewGroup)]
+// #[derive(ViewGroup)]
 pub struct FeedGroup<'a, C: PixelColor> {
-    title: Text<'a, MonoTextStyle<'static, C>>,
-    headline0: Text<'a, MonoTextStyle<'static, C>>,
-    headline1: Text<'a, MonoTextStyle<'static, C>>,
-    headline2: Text<'a, MonoTextStyle<'static, C>>,
-    // headline3: Text<'a, MonoTextStyle<'static, C>>,
-    // headline4: Text<'a, MonoTextStyle<'static, C>>,
+    pub title: TextBox<'a, MonoTextStyle<'static, C>>,
+    pub headline0: TextBox<'a, MonoTextStyle<'static, C>>,
+    pub headline1: TextBox<'a, MonoTextStyle<'static, C>>,
+    pub headline2: TextBox<'a, MonoTextStyle<'static, C>>,
+    pub headline3: TextBox<'a, MonoTextStyle<'static, C>>,
 }
 
 impl<'a> FeedGroup<'a, BinaryColor> {
-    pub fn new(feed: &'a Feed) -> Self {
+    pub fn new(feed: &'a Feed, target_bounds: Rectangle) -> Self {
         let title_style = MonoTextStyle::new(&FONT_6X13_BOLD /*FONT_8X13*/, BinaryColor::On);
         let headline_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
 
+        let textbox_style = TextBoxStyleBuilder::new()
+            .height_mode(HeightMode::FitToText)
+            .alignment(embedded_text::alignment::HorizontalAlignment::Left)
+            .build();
+
+        let bounds = Rectangle::new(Point::zero(), Size::new(target_bounds.size.width, 0));
+
         Self {
-            title: Text::new(&feed.title, Point::zero(), title_style),
-            headline0: Text::new(
+            title: TextBox::with_textbox_style(&feed.title, bounds, title_style, textbox_style),
+            headline0: TextBox::with_textbox_style(
                 &feed.headlines.get(0).unwrap(),
-                Point::zero(),
+                bounds,
                 headline_style,
+                textbox_style,
             ),
-            headline1: Text::new(
+            headline1: TextBox::with_textbox_style(
                 &feed.headlines.get(1).unwrap(),
-                Point::zero(),
+                bounds,
                 headline_style,
+                textbox_style,
             ),
-            headline2: Text::new(
+            headline2: TextBox::with_textbox_style(
                 &feed.headlines.get(2).unwrap(),
-                Point::zero(),
+                bounds,
                 headline_style,
+                textbox_style,
             ),
-            // headline3: Text::new(&feed.headlines.get(3).unwrap(), Point::zero(), headline_style),
-            // headline4: Text::new(&feed.headlines.get(4).unwrap(), Point::zero(), headline_style),
+            headline3: TextBox::with_textbox_style(
+                &feed.headlines.get(3).unwrap(),
+                bounds,
+                headline_style,
+                textbox_style,
+            ),
         }
     }
 }

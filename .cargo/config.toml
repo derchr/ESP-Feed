@@ -14,12 +14,13 @@ build-std-features = ["panic_immediate_abort"]
 
 [env]
 # === Native builder ===
+ESP_IDF_TOOLS_INSTALL_DIR = { value = "global" }
 # Same thing but for the native build. Currently the native and PIO builds disagree how sdkconfig configuration should be passed to the ESP-IDF build
 # See https://github.com/esp-rs/esp-idf-sys/issues/10#issuecomment-919022205
-# ESP_IDF_SDKCONFIG = { value = "./sdkconfig.debug", relative = true }
+ESP_IDF_SDKCONFIG = { value = "sdkconfig.debug" }
 ESP_IDF_SDKCONFIG_DEFAULTS = { value = "./sdkconfig.defaults", relative = true }
 
 # Enables the esp-idf-sys "native" build feature to build against ESP-IDF upcoming (v4.4)
 #ESP_IDF_VERSION = { value = "branch:release/v4.4" }
 # Enables the esp-idf-sys "native" build feature to build against ESP-IDF master (v5.0)
-# ESP_IDF_VERSION = { value = "master" }
+ESP_IDF_VERSION = { value = "master" }

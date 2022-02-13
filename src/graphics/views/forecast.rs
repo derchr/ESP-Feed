@@ -65,7 +65,8 @@ impl<'a> Drawable for Forecast<'a> {
         // Create a 1px border
         let border = self.bounding_box().into_styled(border_style);
 
-        let mut icon_file = File::open(format!("{}/output.tga", BASE_DIR)).unwrap();
+        let mut icon_file =
+            File::open(format!("{}/weather/small/{}.tga", BASE_DIR, self.icon_code)).unwrap();
         let raw_bytes = icon_file.raw_bytes();
         let tga_image = DynamicTga::from_slice(&raw_bytes).unwrap();
         let image = Image::new(&tga_image, Point::zero());

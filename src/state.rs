@@ -15,7 +15,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(setup_mode: bool, wifi_config: Option<WifiConfig>) -> Self {
+    pub fn new(setup_mode: bool, wifi_config: Option<WifiConfig>, location: String) -> Self {
         let page = if setup_mode {
             ConfigPage.into()
         } else {
@@ -30,7 +30,7 @@ impl State {
             setup_mode,
             page,
             wifi: wifi_config,
-            location: String::new(),
+            location,
         }
     }
 

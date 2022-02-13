@@ -1,9 +1,11 @@
-use super::views::feed_group;
 use crate::{
     datetime, definitions,
     graphics::{
         style,
-        views::{feed_group::FeedGroup, forecast_row::ForecastRow},
+        views::{
+            feed_group::FeedGroup,
+            forecast_row::{ForecastRow, ForecastType},
+        },
     },
     state::State,
     storage::{ReadFile, BASE_DIR},
@@ -68,12 +70,18 @@ impl Page for FeedPage {
         let mut groups = Vec::new();
 
         for feed in state.feed_controller.feeds() {
-            let feed0_group = FeedGroup::new(feed);
+            let feed0_group = FeedGroup::new(feed, target.bounding_box());
 
-            let layout = LinearLayout::vertical(feed0_group)
-                .with_alignment(horizontal::Left)
-                .with_spacing(FixedMargin(1))
-                .arrange();
+            let layout = LinearLayout::vertical(
+                Chain::new(feed0_group.title)
+                    .append(feed0_group.headline0)
+                    .append(feed0_group.headline1)
+                    .append(feed0_group.headline2)
+                    .append(feed0_group.headline3),
+            )
+            .with_alignment(horizontal::Left)
+            .with_spacing(FixedMargin(3))
+            .arrange();
 
             groups.push(layout);
         }
@@ -101,13 +109,14 @@ impl Page for WeatherPage {
         D::Color: From<BinaryColor>,
     {
         if let Some(ref report) = state.weather_controller.current() {
-            let mut icon_file = File::open(format!("{}/outputb.tga", BASE_DIR)).unwrap();
+            let mut icon_file =
+                File::open(format!("{}/weather/big/{}.tga", BASE_DIR, report.icon)).unwrap();
             let raw_bytes = icon_file.raw_bytes();
             let tga_image = DynamicTga::from_slice(&raw_bytes).unwrap();
 
             let text_style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
 
-            let forecast_row = ForecastRow::new(report)
+            let forecast_row = ForecastRow::new(&state.weather_controller, ForecastType::Hourly)
                 .align_to(&target.bounding_box(), horizontal::Left, vertical::Bottom)
                 .translate(Point::new(1, 0)) // TODO: Remove when border bug is fixed
                 .translate(Point::new(-1, 1));

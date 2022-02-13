@@ -1,6 +1,7 @@
 use crate::{
     datetime,
     graphics::views::forecast::Forecast,
+    weather::WeatherController,
     weather::WeatherReport, // TODO Weathercontroller forecast ?
 };
 use embedded_graphics::{
@@ -25,18 +26,44 @@ pub struct ForecastRow<'a> {
     layout: Layout<'a>,
 }
 
+pub enum ForecastType {
+    Daily,
+    Hourly,
+}
+
 impl<'a> ForecastRow<'a> {
-    pub fn new(forecast_report: &'a WeatherReport) -> Self {
-        let datetime = datetime::get_datetime().unwrap();
+    pub fn new(controller: &'a WeatherController, forecast_type: ForecastType) -> Self {
         let format = time::format_description::parse("[hour]:00").expect("Invalid format.");
+
+        let WeatherReport { dt, icon, temp, .. } = controller.hourly(1).unwrap_or_default();
+        let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
         let time = Box::new(datetime.format(&format).expect("Could not format time."));
         let time = Box::leak(time).as_str(); // wtf TODO
+        let widget0 = Forecast::new(icon, time, temp);
 
-        let widget0 = Forecast::new("", time, forecast_report.temp);
-        let widget1 = Forecast::new("", time, forecast_report.temp);
-        let widget2 = Forecast::new("", time, forecast_report.temp);
-        let widget3 = Forecast::new("", time, forecast_report.temp);
-        let widget4 = Forecast::new("", time, forecast_report.temp);
+        let WeatherReport { dt, icon, temp, .. } = controller.hourly(2).unwrap_or_default();
+        let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
+        let time = Box::new(datetime.format(&format).expect("Could not format time."));
+        let time = Box::leak(time).as_str(); // wtf TODO
+        let widget1 = Forecast::new(icon, time, temp);
+
+        let WeatherReport { dt, icon, temp, .. } = controller.hourly(3).unwrap_or_default();
+        let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
+        let time = Box::new(datetime.format(&format).expect("Could not format time."));
+        let time = Box::leak(time).as_str(); // wtf TODO
+        let widget2 = Forecast::new(icon, time, temp);
+
+        let WeatherReport { dt, icon, temp, .. } = controller.hourly(4).unwrap_or_default();
+        let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
+        let time = Box::new(datetime.format(&format).expect("Could not format time."));
+        let time = Box::leak(time).as_str(); // wtf TODO
+        let widget3 = Forecast::new(icon, time, temp);
+
+        let WeatherReport { dt, icon, temp, .. } = controller.hourly(5).unwrap_or_default();
+        let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
+        let time = Box::new(datetime.format(&format).expect("Could not format time."));
+        let time = Box::leak(time).as_str(); // wtf TODO
+        let widget4 = Forecast::new(icon, time, temp);
 
         let layout = LinearLayout::horizontal(
             Chain::new(widget0)

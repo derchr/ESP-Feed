@@ -51,6 +51,7 @@ fn main() -> Result<()> {
 
     let mut nvs_controller = NvsController::new(Arc::clone(&default_nvs))?;
     let wifi_config = nvs_controller.get_wifi_config().ok();
+    let location = nvs_controller.get_string("location")?;
 
     let (command_tx, command_rx) = channel();
     let (update_page_tx, update_page_rx) = channel();
@@ -58,9 +59,9 @@ fn main() -> Result<()> {
     let state = Arc::new(Mutex::new(state::State::new(
         setup_mode,
         wifi_config.clone(),
+        location,
     )));
 
-    //let mut display = display::get_display(pins.gpio27, pins.gpio26, peripherals.i2c0);
     let spi3 = peripherals.spi3;
     let busy = pins.gpio4.into_input()?;
     let rst = pins.gpio16.into_output()?;
@@ -100,8 +101,8 @@ fn main() -> Result<()> {
         let controller = &mut state.lock().unwrap().feed_controller;
         let urls = [
             url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url"),
-            url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml")
-                .expect("Invalid Url"),
+            // url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml")
+            //     .expect("Invalid Url"),
         ];
         controller.urls_mut().extend_from_slice(&urls);
     }
@@ -120,7 +121,7 @@ fn main() -> Result<()> {
                 let weather_controller = &mut state.weather_controller;
                 info!("Fetching weather.");
                 weather_controller
-                    .refresh()
+                    .refresh(&state.location)
                     .context("Could not retrieve weather data.")?;
                 Ok(())
             }
@@ -140,7 +141,7 @@ fn main() -> Result<()> {
     };
 
     std::thread::Builder::new()
-        .stack_size(10240)
+        .stack_size(30720)
         .spawn(fetching_thread)
         .context("Could not create feed fetching thread.")?;
 
@@ -160,6 +161,11 @@ fn main() -> Result<()> {
                     ssid: form.ssid,
                     pass: form.pass,
                 })?;
+
+                nvs_controller.store_string("location", &form.location)?;
+
+                let state = &mut state.lock().unwrap();
+                state.location = form.location;
             }
             Err(RecvTimeoutError::Timeout) => {
                 // Check if a button was pressed in the meanwhile.
