@@ -1,3 +1,5 @@
+//! Fetches the stock info and provides the StockController.
+
 use crate::datetime;
 use anyhow::Result;
 use embedded_plots::curve::PlotPoint;

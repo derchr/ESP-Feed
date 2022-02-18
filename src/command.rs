@@ -1,6 +1,9 @@
-use crate::server::FormData;
+//! Command type that the main task listenes for.
+
+use crate::server::{PersonalData, WifiData};
 
 pub enum Command {
-    SaveConfig(FormData),
+    SavePersonalConfig(PersonalData),
+    SaveWifiConfig(WifiData),
     SwitchPage,
 }

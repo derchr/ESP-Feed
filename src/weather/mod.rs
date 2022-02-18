@@ -1,3 +1,5 @@
+//! Fetches the weather info and provides the WeatherController.
+
 mod openweather_types;
 
 use anyhow::Result;

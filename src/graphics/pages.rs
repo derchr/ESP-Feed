@@ -119,7 +119,7 @@ impl Page for StockPage {
 
         if let Some(stock_data) = state.stock_controller.stock_data() {
             let curve = Curve::from_data(stock_data);
-            const BORDER: u32 = 10;
+            const BORDER: u32 = 15;
 
             let bounds = &target.bounding_box();
 

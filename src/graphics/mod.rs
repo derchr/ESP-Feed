@@ -1,3 +1,5 @@
+//! Module that handles the drawing to the display.
+
 pub mod display;
 pub mod pages;
 mod style;
