@@ -67,8 +67,8 @@ impl<'a> TryFrom<&'a Hourly> for WeatherReport<'a> {
             description: &weather_description.description,
             icon: &weather_description.icon,
             temp: item.temp,
-            temp_min: Some(item.temp_min),
-            temp_max: Some(item.temp_max),
+            temp_min: None,
+            temp_max: None,
             feels_like: Some(item.feels_like),
             pressure: item.pressure,
             humidity: item.humidity,
@@ -85,7 +85,7 @@ impl<'a> TryFrom<&'a Daily> for WeatherReport<'a> {
 
     fn try_from(item: &'a Daily) -> Result<Self> {
         let weather_description = item.weather.get(0).unwrap(); // TODO
-        let temperature = &item.temperature;
+        let temperature = &item.temp;
 
         Ok(Self {
             name: None,

@@ -123,6 +123,12 @@ fn main() -> Result<()> {
                 weather_controller
                     .refresh(&state.location)
                     .context("Could not retrieve weather data.")?;
+
+                let stock_controller = &mut state.stock_controller;
+                info!("Fetching stock info.");
+                stock_controller
+                    .refresh()
+                    .context("Could not retrieve stock info.")?;
                 Ok(())
             }
 

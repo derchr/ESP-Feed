@@ -11,7 +11,7 @@ use embedded_graphics::{
     mono_font::{iso_8859_1::FONT_6X10, MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
-    primitives::{Line, PrimitiveStyleBuilder, Rectangle},
+    primitives::Rectangle,
 };
 use embedded_text::{
     alignment::{HorizontalAlignment, VerticalAlignment},
@@ -43,11 +43,11 @@ pub fn draw_pages(
             let page = &state.page;
             // let target = display.display.as_mut();
 
-            let style = PrimitiveStyleBuilder::new()
-                .stroke_color(BinaryColor::On)
-                .stroke_width(1)
-                .fill_color(BinaryColor::Off)
-                .build();
+            // let style = PrimitiveStyleBuilder::new()
+            //     .stroke_color(BinaryColor::On)
+            //     .stroke_width(1)
+            //     .fill_color(BinaryColor::Off)
+            //     .build();
 
             let height = 12;
             // Line::new(

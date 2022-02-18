@@ -1,6 +1,7 @@
 use crate::{
     feed::FeedController,
-    graphics::pages::{ConfigPage, ExamplePage, FeedPage, Page, PageType, WeatherPage},
+    graphics::pages::{ConfigPage, ExamplePage, FeedPage, Page, PageType, StockPage, WeatherPage, WeatherPageType},
+    stock::StockController,
     weather::WeatherController,
     wifi::WifiConfig,
 };
@@ -8,6 +9,7 @@ use crate::{
 pub struct State {
     pub feed_controller: FeedController,
     pub weather_controller: WeatherController,
+    pub stock_controller: StockController,
     pub setup_mode: bool,
     pub page: PageType,
     pub wifi: Option<WifiConfig>,
@@ -21,12 +23,14 @@ impl State {
         } else {
             // FeedPage.into()
             // ExamplePage.into()
-            WeatherPage.into()
+            // StockPage.into()
+            WeatherPage(WeatherPageType::Hourly).into()
         };
 
         Self {
             feed_controller: FeedController::new(),
             weather_controller: WeatherController::new(),
+            stock_controller: StockController::new(),
             setup_mode,
             page,
             wifi: wifi_config,
@@ -39,7 +43,9 @@ impl State {
             PageType::ConfigPage(_) => self.page = ConfigPage.into(),
             PageType::ExamplePage(_) => self.page = ExamplePage.into(),
             PageType::FeedPage(_) => self.page = FeedPage.into(),
-            PageType::WeatherPage(_) => self.page = WeatherPage.into(),
+            PageType::WeatherPage(WeatherPage(WeatherPageType::Daily)) => self.page = WeatherPage(WeatherPageType::Daily).into(),
+            PageType::WeatherPage(WeatherPage(WeatherPageType::Hourly)) => self.page = WeatherPage(WeatherPageType::Hourly).into(),
+            PageType::StockPage(_) => self.page = StockPage.into(),
         }
 
         log::info!("Switched page to {:?}", self.page);

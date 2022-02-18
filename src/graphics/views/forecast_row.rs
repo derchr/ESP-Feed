@@ -1,6 +1,6 @@
 use crate::{
     datetime,
-    graphics::views::forecast::Forecast,
+    graphics::{pages::WeatherPageType, views::forecast::Forecast},
     weather::WeatherController,
     weather::WeatherReport, // TODO Weathercontroller forecast ?
 };
@@ -26,51 +26,49 @@ pub struct ForecastRow<'a> {
     layout: Layout<'a>,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum ForecastType {
     Daily,
     Hourly,
 }
 
+impl From<WeatherPageType> for ForecastType {
+    fn from(page_type: WeatherPageType) -> Self {
+        match page_type {
+            WeatherPageType::Daily => ForecastType::Daily,
+            WeatherPageType::Hourly => ForecastType::Hourly,
+        }
+    }
+}
+
 impl<'a> ForecastRow<'a> {
     pub fn new(controller: &'a WeatherController, forecast_type: ForecastType) -> Self {
-        let format = time::format_description::parse("[hour]:00").expect("Invalid format.");
+        
+        let forecast_widgets: [Forecast; 5] = array_init::array_init(|i| {
+            let i = i + 1; // First index is same as current.
+            
+            let WeatherReport { dt, icon, temp, .. } = match forecast_type {
+                ForecastType::Hourly => controller.hourly(i).unwrap_or_default(),
+                ForecastType::Daily => controller.daily(i).unwrap_or_default(),
+            };
 
-        let WeatherReport { dt, icon, temp, .. } = controller.hourly(1).unwrap_or_default();
-        let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
-        let time = Box::new(datetime.format(&format).expect("Could not format time."));
-        let time = Box::leak(time).as_str(); // wtf TODO
-        let widget0 = Forecast::new(icon, time, temp);
+            let format = match forecast_type {
+                ForecastType::Hourly => time::format_description::parse("[hour]:00").unwrap(),
+                ForecastType::Daily => time::format_description::parse("[day].[month]").unwrap(),
+            };
 
-        let WeatherReport { dt, icon, temp, .. } = controller.hourly(2).unwrap_or_default();
-        let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
-        let time = Box::new(datetime.format(&format).expect("Could not format time."));
-        let time = Box::leak(time).as_str(); // wtf TODO
-        let widget1 = Forecast::new(icon, time, temp);
-
-        let WeatherReport { dt, icon, temp, .. } = controller.hourly(3).unwrap_or_default();
-        let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
-        let time = Box::new(datetime.format(&format).expect("Could not format time."));
-        let time = Box::leak(time).as_str(); // wtf TODO
-        let widget2 = Forecast::new(icon, time, temp);
-
-        let WeatherReport { dt, icon, temp, .. } = controller.hourly(4).unwrap_or_default();
-        let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
-        let time = Box::new(datetime.format(&format).expect("Could not format time."));
-        let time = Box::leak(time).as_str(); // wtf TODO
-        let widget3 = Forecast::new(icon, time, temp);
-
-        let WeatherReport { dt, icon, temp, .. } = controller.hourly(5).unwrap_or_default();
-        let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
-        let time = Box::new(datetime.format(&format).expect("Could not format time."));
-        let time = Box::leak(time).as_str(); // wtf TODO
-        let widget4 = Forecast::new(icon, time, temp);
+            let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
+            let time = Box::new(datetime.format(&format).expect("Could not format time."));
+            let time = Box::leak(time).as_str(); // wtf TODO
+            Forecast::new(icon, time, temp)
+        });
 
         let layout = LinearLayout::horizontal(
-            Chain::new(widget0)
-                .append(widget1)
-                .append(widget2)
-                .append(widget3)
-                .append(widget4),
+            Chain::new(forecast_widgets[0])
+                .append(forecast_widgets[1])
+                .append(forecast_widgets[2])
+                .append(forecast_widgets[3])
+                .append(forecast_widgets[4]),
         )
         .with_spacing(FixedMargin(-1))
         .arrange();

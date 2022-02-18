@@ -2,18 +2,14 @@ use crate::{
     datetime, definitions,
     graphics::{
         style,
-        views::{
-            feed_group::FeedGroup,
-            forecast_row::{ForecastRow, ForecastType},
-        },
+        views::{feed_group::FeedGroup, forecast_row::ForecastRow},
     },
     state::State,
     storage::{ReadFile, BASE_DIR},
 };
 use anyhow::Result;
 use embedded_graphics::{
-    geometry::AnchorPoint,
-    geometry::{Point, Size},
+    geometry::{AnchorPoint, Point, Size},
     image::Image,
     mono_font::{iso_8859_1::*, MonoTextStyle},
     pixelcolor::BinaryColor,
@@ -25,16 +21,23 @@ use embedded_layout::{
     layout::linear::{spacing::DistributeFill, FixedMargin, LinearLayout},
     prelude::*,
 };
+
 use embedded_text::{style::TextBoxStyleBuilder, TextBox};
 use enum_dispatch::enum_dispatch;
 use std::fs::File;
 use tinytga::DynamicTga;
 
+#[derive(Debug, Clone, Copy)]
+pub enum WeatherPageType {
+    Hourly,
+    Daily,
+}
+
 #[derive(Debug)]
 pub struct FeedPage;
 
 #[derive(Debug)]
-pub struct WeatherPage;
+pub struct WeatherPage(pub WeatherPageType);
 
 #[derive(Debug)]
 pub struct ExamplePage;
@@ -42,11 +45,15 @@ pub struct ExamplePage;
 #[derive(Debug)]
 pub struct ConfigPage;
 
+#[derive(Debug)]
+pub struct StockPage;
+
 #[enum_dispatch(Page)]
 #[derive(Debug)]
 pub enum PageType {
     FeedPage,
     WeatherPage,
+    StockPage,
     ExamplePage,
     ConfigPage,
 }
@@ -98,7 +105,42 @@ impl Page for FeedPage {
     }
 
     fn next_page(&self) -> PageType {
-        WeatherPage.into()
+        StockPage.into()
+    }
+}
+
+impl Page for StockPage {
+    fn draw<D>(&self, target: &mut D, state: &State) -> Result<(), D::Error>
+    where
+        D: DrawTarget<Color = BinaryColor> + Dimensions,
+        D::Color: From<BinaryColor>,
+    {
+        use embedded_plots::{axis::Scale, curve::Curve, single_plot::SinglePlot};
+
+        if let Some(stock_data) = state.stock_controller.stock_data() {
+            let curve = Curve::from_data(stock_data);
+            const BORDER: u32 = 10;
+
+            let bounds = &target.bounding_box();
+
+            let top_left = Point::new(BORDER as _, BORDER as _);
+            let bottom_right = Point::new(
+                (bounds.size.width - BORDER) as _,
+                (bounds.size.height - BORDER) as _,
+            );
+
+            let plot = SinglePlot::new(&curve, Scale::RangeFraction(5), Scale::RangeFraction(3))
+                .into_drawable(top_left, bottom_right)
+                .set_color(BinaryColor::On);
+
+            plot.draw(target)?;
+        }
+
+        Ok(())
+    }
+
+    fn next_page(&self) -> PageType {
+        WeatherPage(WeatherPageType::Hourly).into()
     }
 }
 
@@ -116,7 +158,7 @@ impl Page for WeatherPage {
 
             let text_style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
 
-            let forecast_row = ForecastRow::new(&state.weather_controller, ForecastType::Hourly)
+            let forecast_row = ForecastRow::new(&state.weather_controller, self.0.into())
                 .align_to(&target.bounding_box(), horizontal::Left, vertical::Bottom)
                 .translate(Point::new(1, 0)) // TODO: Remove when border bug is fixed
                 .translate(Point::new(-1, 1));
@@ -165,7 +207,10 @@ impl Page for WeatherPage {
     }
 
     fn next_page(&self) -> PageType {
-        ExamplePage.into()
+        match self.0 {
+            WeatherPageType::Hourly => WeatherPage(WeatherPageType::Daily).into(),
+            WeatherPageType::Daily => FeedPage.into(),
+        }
     }
 }
 
@@ -239,15 +284,6 @@ impl Page for ExamplePage {
             )
             .draw(target)?;
         }
-
-        // Picture PoC
-        // use std::io::Read;
-        // let mut icon = std::fs::File::open("/mnt/bw.tga").unwrap();
-        // let mut buf = Vec::new();
-        // icon.read_to_end(&mut buf).unwrap();
-        // let tga = tinytga::DynamicTga::from_slice(&buf).unwrap();
-        // let image = Image::new(&tga, Point::zero());
-        // image.draw(display)?;
 
         Ok(())
     }

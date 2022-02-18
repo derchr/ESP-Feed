@@ -141,10 +141,10 @@ pub fn get_epd_display(
 
     let mut delay = delay::Ets;
 
-    let mut epd2in13: Edp2in13Display =
+    let epd2in13: Edp2in13Display =
         Epd2in13::new(&mut master, cs, busy, dc, rst, &mut delay).unwrap();
 
-    let mut display: Box<RotatedDisplay2in13> = Default::default();
+    let display: Box<RotatedDisplay2in13> = Default::default();
     //     epd2in13.clear_frame(&mut master, &mut delay)?;
 
     //     epd2in13
