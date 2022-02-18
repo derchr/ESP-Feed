@@ -7,23 +7,10 @@ use crate::{
 use embedded_graphics::{
     draw_target::DrawTarget, pixelcolor::BinaryColor, prelude::*, primitives::Rectangle,
 };
-use embedded_layout::{
-    align::vertical::Bottom,
-    layout::linear::{FixedMargin, Horizontal, LinearLayout},
-    prelude::*,
-};
-
-type LayoutOrientation = Horizontal<Bottom, FixedMargin>;
-type Layout<'a> = LinearLayout<
-    LayoutOrientation,
-    Link<
-        Forecast<'a>,
-        Link<Forecast<'a>, Link<Forecast<'a>, Link<Forecast<'a>, Chain<Forecast<'a>>>>>,
-    >,
->;
+use embedded_layout::prelude::*;
 
 pub struct ForecastRow<'a> {
-    layout: Layout<'a>,
+    forecast_widgets: [Forecast<'a>; 5],
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -43,10 +30,9 @@ impl From<WeatherPageType> for ForecastType {
 
 impl<'a> ForecastRow<'a> {
     pub fn new(controller: &'a WeatherController, forecast_type: ForecastType) -> Self {
-        
         let forecast_widgets: [Forecast; 5] = array_init::array_init(|i| {
             let i = i + 1; // First index is same as current.
-            
+
             let WeatherReport { dt, icon, temp, .. } = match forecast_type {
                 ForecastType::Hourly => controller.hourly(i).unwrap_or_default(),
                 ForecastType::Daily => controller.daily(i).unwrap_or_default(),
@@ -58,28 +44,20 @@ impl<'a> ForecastRow<'a> {
             };
 
             let datetime = datetime::get_datetime_from_unix(dt as _).unwrap();
-            let time = Box::new(datetime.format(&format).expect("Could not format time."));
-            let time = Box::leak(time).as_str(); // wtf TODO
+            let time = datetime.format(&format).expect("Could not format time.");
+
             Forecast::new(icon, time, temp)
         });
 
-        let layout = LinearLayout::horizontal(
-            Chain::new(forecast_widgets[0])
-                .append(forecast_widgets[1])
-                .append(forecast_widgets[2])
-                .append(forecast_widgets[3])
-                .append(forecast_widgets[4]),
-        )
-        .with_spacing(FixedMargin(-1))
-        .arrange();
-
-        Self { layout }
+        Self { forecast_widgets }
     }
 }
 
 impl<'a> View for ForecastRow<'a> {
     fn translate_impl(&mut self, by: Point) {
-        self.layout.translate_mut(by);
+        self.forecast_widgets.iter_mut().for_each(|w| {
+            w.translate_mut(by);
+        });
     }
 
     fn bounds(&self) -> Rectangle {
@@ -89,7 +67,10 @@ impl<'a> View for ForecastRow<'a> {
 
 impl<'a> Dimensions for ForecastRow<'a> {
     fn bounding_box(&self) -> Rectangle {
-        self.layout.bounds()
+        let size = self.forecast_widgets.len();
+        self.forecast_widgets[0]
+            .bounds()
+            .enveloping(&self.forecast_widgets[size].bounds())
     }
 }
 
@@ -98,6 +79,10 @@ impl<'a> Drawable for ForecastRow<'a> {
     type Output = ();
 
     fn draw<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D) -> Result<(), D::Error> {
-        self.layout.draw(target)
+        for w in self.forecast_widgets.iter() {
+            w.draw(target)?;
+        }
+
+        Ok(())
     }
 }

@@ -19,16 +19,16 @@ use embedded_layout::{
 use std::fs::File;
 use tinytga::DynamicTga;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Forecast<'a> {
     icon_code: &'a str,
-    datetime: &'a str,
+    datetime: String,
     temperature: f32,
     bounds: Rectangle,
 }
 
 impl<'a> Forecast<'a> {
-    pub fn new(icon: &'a str, datetime: &'a str, temperature: f32) -> Self {
+    pub fn new(icon: &'a str, datetime: String, temperature: f32) -> Self {
         Self {
             icon_code: icon,
             datetime,
@@ -71,7 +71,7 @@ impl<'a> Drawable for Forecast<'a> {
         let tga_image = DynamicTga::from_slice(&raw_bytes).unwrap();
         let image = Image::new(&tga_image, Point::zero());
 
-        let datetime_text = Text::new(self.datetime, Point::zero(), style::normal_text());
+        let datetime_text = Text::new(&self.datetime, Point::zero(), style::normal_text());
 
         let temp = &format!("{:.1}°C", self.temperature);
         let temperature_text = Text::new(temp, Point::zero(), style::normal_text());
