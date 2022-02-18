@@ -1,7 +1,7 @@
 //! TODO: Make types optional where needed.
-//! 
+//!
 //! serde(flatten) results in a crash because it allocates too much. So sadly, we cannot use it.
-//! 
+//!
 //! Some fields are commented out because at this point in time, there is no use for them.
 
 use serde::{
@@ -140,8 +140,8 @@ pub struct Hourly {
     // #[serde(flatten)]
     // pub temperature: Temperature,
     pub temp: f32,
-    pub temp_min: f32,
-    pub temp_max: f32,
+    // pub temp_min: f32,
+    // pub temp_max: f32,
     pub feels_like: f32,
 
     pub pressure: f32,
@@ -161,7 +161,7 @@ pub struct Daily {
     // pub sun: Sun,
     // #[serde(flatten)]
     // pub moon: Moon,
-    pub temperature: TemperatureDaily,
+    pub temp: TemperatureDaily,
     // pub feels_like: FeelsLikeDaily,
     pub pressure: f32,
     pub humidity: f32,

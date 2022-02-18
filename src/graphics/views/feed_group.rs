@@ -1,16 +1,10 @@
-use crate::{datetime, feed::Feed, graphics::views::forecast::Forecast};
+use crate::{feed::Feed};
 use embedded_graphics::{
     mono_font::{iso_8859_1::*, MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
     primitives::Rectangle,
-    text::Text,
 };
-use embedded_layout::{
-    layout::linear::{FixedMargin, LinearLayout},
-    prelude::*,
-};
-use embedded_layout_macros::ViewGroup;
 use embedded_text::{
     style::{HeightMode, TextBoxStyleBuilder},
     TextBox,
@@ -40,25 +34,25 @@ impl<'a> FeedGroup<'a, BinaryColor> {
         Self {
             title: TextBox::with_textbox_style(&feed.title, bounds, title_style, textbox_style),
             headline0: TextBox::with_textbox_style(
-                &feed.headlines.get(0).unwrap(),
+                feed.headlines.get(0).unwrap(),
                 bounds,
                 headline_style,
                 textbox_style,
             ),
             headline1: TextBox::with_textbox_style(
-                &feed.headlines.get(1).unwrap(),
+                feed.headlines.get(1).unwrap(),
                 bounds,
                 headline_style,
                 textbox_style,
             ),
             headline2: TextBox::with_textbox_style(
-                &feed.headlines.get(2).unwrap(),
+                feed.headlines.get(2).unwrap(),
                 bounds,
                 headline_style,
                 textbox_style,
             ),
             headline3: TextBox::with_textbox_style(
-                &feed.headlines.get(3).unwrap(),
+                feed.headlines.get(3).unwrap(),
                 bounds,
                 headline_style,
                 textbox_style,

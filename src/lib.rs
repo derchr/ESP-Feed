@@ -7,6 +7,7 @@ pub mod interrupt;
 pub mod nvs;
 pub mod server;
 pub mod state;
+pub mod stock;
 pub mod storage;
 pub mod weather;
 pub mod wifi;

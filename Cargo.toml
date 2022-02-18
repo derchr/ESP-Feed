@@ -1,6 +1,6 @@
 [package]
 name = "esp-feed"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["derek <christ.derek@gmail.com>"]
 edition = "2018"
 resolver = "2"
@@ -31,13 +31,12 @@ embedded-svc = "0.16"
 esp-idf-hal = "0.32"
 embedded-hal = "0.2.6"
 quick-xml = "0.22"
-time = { version = "0.3", features = ["macros", "formatting"] }
-# embedded-graphics = { git = "https://github.com/embedded-graphics/embedded-graphics" }
+time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
 embedded-graphics = "0.7"
-# embedded-graphics-core = "0.3"
 embedded-layout = "0.2"
 embedded-layout-macros = "0.1"
 embedded-text = "0.5"
+embedded-plots = { git = "https://github.com/derchr/embedded-plots", branch = "work/update-fixes" }
 tinytga = "0.4"
 epd-waveshare = { path = "epd-waveshare" }
 url = "2.2"
@@ -45,6 +44,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 enum_dispatch = "0.3"
 array-init = "2.0"
+itertools = "0.10"
 
 [build-dependencies]
 embuild = "0.28"
