@@ -119,12 +119,10 @@
             let form_data = {
                 name: document.getElementById('name').value,
                 location: document.getElementById('location').value,
-                ssid: document.getElementById('wifi-ssid').value,
-                pass: document.getElementById('wifi-pass').value
             };
 
             let xhr = new XMLHttpRequest();
-            let url = "/";
+            let url = "/personal";
 
             xhr.open("POST", url, true);
             xhr.setRequestHeader("Content-Type", "application/json");
@@ -146,13 +144,8 @@
 </head>
 
 <body>
-    <div class="center-item">
-        <h1>Einstellungen - Übersicht</h1>
-        <button>Persönliche Einstellungen</button>
-        <button>Wifi Einstellungen</button>
-    </div>
     <form method="post" id="sampleform" class="center-item">
-        <h1>Einstellungen</h1>
+        <h1>Persönliche Einstellungen</h1>
         <div class="form-row">
             <label for="name">Name:</label>
             <input type="text" id="name" name="name" required>
@@ -160,14 +153,6 @@
         <div class="form-row">
             <label for="location">Ort:</label>
             <input type="text" id="location" name="location" required>
-        </div>
-        <div class="form-row">
-            <label for="wifi-ssid">WLAN SSID:</label>
-            <input type="text" id="wifi-ssid" name="wifi-ssid" required>
-        </div>
-        <div class="form-row">
-            <label for="wifi-pass">WLAN Schlüssel:</label>
-            <input type="password" id="wifi-pass" name="wifi-pass" required>
         </div>
         <div class="form-row">
             <button id="submit-button">Speichern</button>

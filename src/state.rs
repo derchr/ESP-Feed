@@ -1,3 +1,5 @@
+//! State struct that holds the complete state of the application.
+
 use crate::{
     feed::FeedController,
     graphics::pages::{ConfigPage, ExamplePage, FeedPage, Page, PageType, StockPage, WeatherPage, WeatherPageType},

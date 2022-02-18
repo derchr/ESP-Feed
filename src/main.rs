@@ -1,12 +1,20 @@
-use esp_feed::{
-    command::Command, datetime, graphics, graphics::display, interrupt, nvs::NvsController, server,
-    state, storage::StorageHandle, wifi,
-};
-
 use anyhow::{Context, Result};
 use embedded_hal::digital::v2::InputPin;
+use esp_feed::{
+    command::Command,
+    datetime, graphics,
+    graphics::display,
+    interrupt,
+    nvs::NvsController,
+    server::{self, PersonalData, WifiData},
+    state,
+    storage::StorageHandle,
+    wifi,
+};
 use esp_idf_hal::{gpio::Pin, prelude::*};
-use esp_idf_svc::{log::EspLogger, netif::*, nvs::*, sysloop::*};
+use esp_idf_svc::{
+    log::EspLogger, netif::EspNetifStack, nvs::EspDefaultNvs, sysloop::EspSysLoopStack,
+};
 use esp_idf_sys as _; // Always keep it imported
 use log::*;
 use std::sync::{
@@ -50,8 +58,13 @@ fn main() -> Result<()> {
     let button1_state = interrupt::register_button_interrupt(button_pin.pin());
 
     let mut nvs_controller = NvsController::new(Arc::clone(&default_nvs))?;
-    let wifi_config = nvs_controller.get_wifi_config().ok();
-    let location = nvs_controller.get_string("location")?;
+    let wifi_config = nvs_controller.get_config::<WifiData>().ok().map(Into::into);
+    let personal_config = nvs_controller.get_config::<PersonalData>().ok();
+    let location = if let Some(data) = personal_config {
+        data.location
+    } else {
+        "".to_string()
+    };
 
     let (command_tx, command_rx) = channel();
     let (update_page_tx, update_page_rx) = channel();
@@ -160,18 +173,20 @@ fn main() -> Result<()> {
                 state.lock().unwrap().next_page();
                 update_page_tx.send(())?;
             }
-            Ok(Command::SaveConfig(form)) => {
-                info!("Save this config: {:?}", form);
+            Ok(Command::SavePersonalConfig(ref config)) => {
+                info!("Save this personal config: {:?}", config);
 
-                nvs_controller.store_wifi_config(&wifi::WifiConfig {
-                    ssid: form.ssid,
-                    pass: form.pass,
-                })?;
-
-                nvs_controller.store_string("location", &form.location)?;
+                nvs_controller.store_config(config)?;
 
                 let state = &mut state.lock().unwrap();
-                state.location = form.location;
+                state.location = config.location.clone();
+            }
+            Ok(Command::SaveWifiConfig(ref config)) => {
+                info!("Save this wifi config: {:?}", config);
+
+                nvs_controller.store_config(config)?;
+
+                // let state = &mut state.lock().unwrap(); // TODO
             }
             Err(RecvTimeoutError::Timeout) => {
                 // Check if a button was pressed in the meanwhile.

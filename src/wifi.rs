@@ -1,3 +1,5 @@
+//! Setup the wifi connection and wifi access point.
+
 use anyhow::*;
 use embedded_svc::wifi::*;
 use esp_idf_svc::{netif::*, nvs::*, sysloop::*, wifi::*};

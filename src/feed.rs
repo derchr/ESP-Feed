@@ -1,3 +1,5 @@
+//! Fetches the feeds and provides the FeedController.
+
 use anyhow::{bail, Context, Result};
 use embedded_svc::{
     http::client::{Client, Request},

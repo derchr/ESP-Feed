@@ -1,4 +1,6 @@
-use crate::wifi::WifiConfig;
+//! Handles the non-volatile storage of the ESP32.
+
+use crate::server::ConfigData;
 use anyhow::{Context, Result};
 use embedded_svc::storage::Storage;
 use esp_idf_svc::{nvs::EspDefaultNvs, nvs_storage::EspNvsStorage};
@@ -16,19 +18,25 @@ impl NvsController {
         })
     }
 
-    pub fn store_wifi_config(&mut self, wifi_config: &WifiConfig) -> Result<()> {
+    pub fn store_config<'de, T>(&mut self, config: &T) -> Result<()>
+    where
+        T: ConfigData<'de>,
+    {
         self.storage
-            .put("wifi_config", wifi_config)
-            .context("Could not store wifi config into NVS")?;
+            .put(T::key(), config)
+            .context("Could not store config into NVS")?;
 
         Ok(())
     }
 
-    pub fn get_wifi_config(&self) -> Result<WifiConfig> {
+    pub fn get_config<T>(&self) -> Result<T>
+    where
+        for<'de> T: ConfigData<'de>,
+    {
         let config = self
             .storage
-            .get("wifi_config")?
-            .context("Could not read wifi config from NVS")?;
+            .get(T::key())?
+            .context("Could not read config from NVS")?;
 
         Ok(config)
     }

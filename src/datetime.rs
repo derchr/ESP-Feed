@@ -1,3 +1,5 @@
+//! Initialization and retrieval of the datetime.
+
 use anyhow::Result;
 use std::{convert::TryFrom, time::SystemTime};
 use time::*;

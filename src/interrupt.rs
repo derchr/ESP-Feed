@@ -1,3 +1,5 @@
+//! Helper module to make use of a button interrupt.
+
 use esp_idf_hal::interrupt::Mutex;
 use std::sync::Arc;
 
