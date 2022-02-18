@@ -85,7 +85,7 @@ where
 
 pub fn httpd(command_tx: Sender<Command>) -> Result<Server> {
     let server = esp_idf_svc::httpd::ServerRegistry::new()
-    .handler(favicon_handler())?
+        .handler(favicon_handler())?
         .at("/simple")
         .get(|_| {
             let settings_path = &format!("{}/simple.htm", BASE_DIR);

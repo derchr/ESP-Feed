@@ -1,4 +1,4 @@
-//! Handle the initialization of the FatFs partition on flash memory. 
+//! Handle the initialization of the FatFs partition on flash memory.
 
 use esp_idf_sys::wl_handle_t;
 use std::{ffi::CString, fs::File, io::Read};

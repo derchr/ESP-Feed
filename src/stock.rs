@@ -103,7 +103,7 @@ impl StockController {
             ALPHAVANTAGE_API_KEY
         ))
         .expect("Invalid Url");
-        
+
         let format = time::format_description::parse("[year]-[month]-[day]").unwrap();
 
         let mut client = esp_idf_svc::http::client::EspHttpClient::new_default()?;

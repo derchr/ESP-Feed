@@ -2,7 +2,9 @@
 
 use crate::{
     feed::FeedController,
-    graphics::pages::{ConfigPage, ExamplePage, FeedPage, Page, PageType, StockPage, WeatherPage, WeatherPageType},
+    graphics::pages::{
+        ConfigPage, ExamplePage, FeedPage, Page, PageType, StockPage, WeatherPage, WeatherPageType,
+    },
     stock::StockController,
     weather::WeatherController,
     wifi::WifiConfig,
@@ -45,8 +47,12 @@ impl State {
             PageType::ConfigPage(_) => self.page = ConfigPage.into(),
             PageType::ExamplePage(_) => self.page = ExamplePage.into(),
             PageType::FeedPage(_) => self.page = FeedPage.into(),
-            PageType::WeatherPage(WeatherPage(WeatherPageType::Daily)) => self.page = WeatherPage(WeatherPageType::Daily).into(),
-            PageType::WeatherPage(WeatherPage(WeatherPageType::Hourly)) => self.page = WeatherPage(WeatherPageType::Hourly).into(),
+            PageType::WeatherPage(WeatherPage(WeatherPageType::Daily)) => {
+                self.page = WeatherPage(WeatherPageType::Daily).into()
+            }
+            PageType::WeatherPage(WeatherPage(WeatherPageType::Hourly)) => {
+                self.page = WeatherPage(WeatherPageType::Hourly).into()
+            }
             PageType::StockPage(_) => self.page = StockPage.into(),
         }
 

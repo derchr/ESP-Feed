@@ -152,9 +152,16 @@ impl Page for WeatherPage {
     {
         if let Some(ref report) = state.weather_controller.current() {
             let mut icon_file =
-                File::open(format!("{}/weather/big/{}.tga", BASE_DIR, report.icon)).unwrap();
+                match File::open(format!("{}/weather/big/{}.tga", BASE_DIR, report.icon)) {
+                    Ok(file) => file,
+                    Err(_) => return Ok(()),
+                };
+
             let raw_bytes = icon_file.raw_bytes();
-            let tga_image = DynamicTga::from_slice(&raw_bytes).unwrap();
+            let tga_image = match DynamicTga::from_slice(&raw_bytes) {
+                Ok(image) => image,
+                Err(_) => return Ok(()),
+            };
 
             let text_style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
 

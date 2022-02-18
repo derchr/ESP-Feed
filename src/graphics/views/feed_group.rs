@@ -1,4 +1,4 @@
-use crate::{feed::Feed};
+use crate::feed::Feed;
 use embedded_graphics::{
     mono_font::{iso_8859_1::*, MonoTextStyle},
     pixelcolor::BinaryColor,
@@ -10,7 +10,6 @@ use embedded_text::{
     TextBox,
 };
 
-// #[derive(ViewGroup)]
 pub struct FeedGroup<'a, C: PixelColor> {
     pub title: TextBox<'a, MonoTextStyle<'static, C>>,
     pub headline0: TextBox<'a, MonoTextStyle<'static, C>>,
@@ -21,7 +20,7 @@ pub struct FeedGroup<'a, C: PixelColor> {
 
 impl<'a> FeedGroup<'a, BinaryColor> {
     pub fn new(feed: &'a Feed, target_bounds: Rectangle) -> Self {
-        let title_style = MonoTextStyle::new(&FONT_6X13_BOLD /*FONT_8X13*/, BinaryColor::On);
+        let title_style = MonoTextStyle::new(&FONT_6X13_BOLD, BinaryColor::On);
         let headline_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
 
         let textbox_style = TextBoxStyleBuilder::new()
