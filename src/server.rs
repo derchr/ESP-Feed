@@ -68,7 +68,7 @@ fn favicon_handler() -> Handler {
     })
 }
 
-fn settings_handler<T>(uri: &str, command_tx: Sender<Command>) -> Handler
+fn settings_post_handler<T>(uri: &str, command_tx: Sender<Command>) -> Handler
 where
     for<'de> T: ConfigData<'de>,
 {
@@ -83,46 +83,32 @@ where
     })
 }
 
+fn settings_get_handler(uri: &str, file: impl ToString) -> Handler
+{
+    let file = file.to_string();
+
+    Handler::new(uri, Method::Get, move |_| {
+        let path = &format!("{}/settings/{}.htm", BASE_DIR, file);
+        let file = File::open(path)
+            .with_context(|| format!("Could not find html: {}", path))?;
+
+        Ok(file.into())
+    })
+}
+
 pub fn httpd(command_tx: Sender<Command>) -> Result<Server> {
     let server = esp_idf_svc::httpd::ServerRegistry::new()
         .handler(favicon_handler())?
-        .at("/simple")
-        .get(|_| {
-            let settings_path = &format!("{}/simple.htm", BASE_DIR);
-            let settings = File::open(settings_path)
-                .with_context(|| format!("Could not find html: {}", settings_path))?;
-
-            Ok(settings.into())
-        })?
-        .at("/")
-        .get(|_| {
-            let settings_path = &format!("{}/settings/overview.htm", BASE_DIR);
-            let settings = File::open(settings_path)
-                .with_context(|| format!("Could not find html: {}", settings_path))?;
-
-            Ok(settings.into())
-        })?
-        .at("/personal")
-        .get(|_| {
-            let settings_path = &format!("{}/settings/personal.htm", BASE_DIR);
-            let settings = File::open(settings_path)
-                .with_context(|| format!("Could not find html: {}", settings_path))?;
-
-            Ok(settings.into())
-        })?
-        .at("/wifi")
-        .get(|_| {
-            let settings_path = &format!("{}/settings/wifi.htm", BASE_DIR);
-            let settings = File::open(settings_path)
-                .with_context(|| format!("Could not find html: {}", settings_path))?;
-
-            Ok(settings.into())
-        })?
-        .handler(settings_handler::<PersonalData>(
+        .handler(settings_get_handler("/simple", "simple"))?
+        .handler(settings_get_handler("/", "overview"))?
+        .handler(settings_get_handler("/personal", "personal"))?
+        .handler(settings_get_handler("/rss", "rss"))?
+        .handler(settings_get_handler("/stock", "stock"))?
+        .handler(settings_post_handler::<PersonalData>(
             "/personal",
             command_tx.clone(),
         ))?
-        .handler(settings_handler::<WifiData>("/wifi", command_tx))?;
+        .handler(settings_post_handler::<WifiData>("/wifi", command_tx))?;
 
     server.start(&Default::default())
 }
