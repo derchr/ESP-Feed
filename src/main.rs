@@ -18,7 +18,7 @@ use esp_idf_svc::{
 use esp_idf_sys as _; // Always keep it imported
 use log::*;
 use std::sync::{
-    mpsc::{channel, RecvTimeoutError},
+    mpsc::{self, RecvTimeoutError},
     Arc, Mutex,
 };
 
@@ -60,14 +60,11 @@ fn main() -> Result<()> {
     let mut nvs_controller = NvsController::new(Arc::clone(&default_nvs))?;
     let wifi_config = nvs_controller.get_config::<WifiData>().ok().map(Into::into);
     let personal_config = nvs_controller.get_config::<PersonalData>().ok();
-    let location = if let Some(data) = personal_config {
-        data.location
-    } else {
-        "".to_string()
-    };
 
-    let (command_tx, command_rx) = channel();
-    let (update_page_tx, update_page_rx) = channel();
+    let location = personal_config.map(|data| data.location).unwrap_or_default();
+
+    let (command_tx, command_rx) = mpsc::channel();
+    let (update_page_tx, update_page_rx) = mpsc::channel();
 
     let state = Arc::new(Mutex::new(state::State::new(
         setup_mode,
