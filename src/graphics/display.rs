@@ -145,11 +145,11 @@ pub fn get_epd_display(
 
 #[allow(unused)]
 fn draw_text(display: &mut RotatedDisplay2in13, text: &str, x: i32, y: i32) {
-    use embedded_graphics::mono_font::MonoTextStyleBuilder;
-    use embedded_graphics::prelude::*;
-    use embedded_graphics::text::Baseline;
-    use embedded_graphics::text::Text;
-    use embedded_graphics::text::TextStyleBuilder;
+    use embedded_graphics::{
+        mono_font::MonoTextStyleBuilder,
+        prelude::*,
+        text::{Baseline, Text, TextStyleBuilder},
+    };
     use epd_waveshare::{
         color::*,
         epd2in13_v2::{Display2in13, Epd2in13},

@@ -56,6 +56,40 @@ impl From<WifiData> for Command {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RssData {
+    pub url: String,
+}
+
+impl<'de> ConfigData<'de> for RssData {
+    fn key() -> &'static str {
+        "rss"
+    }
+}
+
+impl From<RssData> for Command {
+    fn from(config: RssData) -> Self {
+        Command::SaveRssConfig(config)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct StockData {
+    pub symbol: String,
+}
+
+impl<'de> ConfigData<'de> for StockData {
+    fn key() -> &'static str {
+        "stock"
+    }
+}
+
+impl From<StockData> for Command {
+    fn from(config: StockData) -> Self {
+        Command::SaveStockConfig(config)
+    }
+}
+
 fn favicon_handler() -> Handler {
     Handler::new("/favicon.ico", Method::Get, |_| {
         let favicon_path = &format!("{}/favicon.ico", BASE_DIR);
@@ -83,14 +117,12 @@ where
     })
 }
 
-fn settings_get_handler(uri: &str, file: impl ToString) -> Handler
-{
+fn settings_get_handler(uri: &str, file: impl ToString) -> Handler {
     let file = file.to_string();
 
     Handler::new(uri, Method::Get, move |_| {
         let path = &format!("{}/settings/{}.htm", BASE_DIR, file);
-        let file = File::open(path)
-            .with_context(|| format!("Could not find html: {}", path))?;
+        let file = File::open(path).with_context(|| format!("Could not find html: {}", path))?;
 
         Ok(file.into())
     })
@@ -99,9 +131,9 @@ fn settings_get_handler(uri: &str, file: impl ToString) -> Handler
 pub fn httpd(command_tx: Sender<Command>) -> Result<Server> {
     let server = esp_idf_svc::httpd::ServerRegistry::new()
         .handler(favicon_handler())?
-        .handler(settings_get_handler("/simple", "simple"))?
         .handler(settings_get_handler("/", "overview"))?
         .handler(settings_get_handler("/personal", "personal"))?
+        .handler(settings_get_handler("/wifi", "wifi"))?
         .handler(settings_get_handler("/rss", "rss"))?
         .handler(settings_get_handler("/stock", "stock"))?
         .handler(settings_post_handler::<PersonalData>(

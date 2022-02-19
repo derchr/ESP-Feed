@@ -61,7 +61,9 @@ fn main() -> Result<()> {
     let wifi_config = nvs_controller.get_config::<WifiData>().ok().map(Into::into);
     let personal_config = nvs_controller.get_config::<PersonalData>().ok();
 
-    let location = personal_config.map(|data| data.location).unwrap_or_default();
+    let location = personal_config
+        .map(|data| data.location)
+        .unwrap_or_default();
 
     let (command_tx, command_rx) = mpsc::channel();
     let (update_page_tx, update_page_rx) = mpsc::channel();

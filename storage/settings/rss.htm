@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Einstellungen</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        body {
+            height: 100%;
+            background: radial-gradient(#33383f, #424753);
+            background-repeat: np-repeat;
+            background-attachment: fixed;
+            background-size: cover;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .center-item {
+            height: 575px;
+            width: 500px;
+            padding: 40px;
+            border-radius: 8px;
+            background-color: #222831;
+            box-shadow: 4px 4px 1px rgba(0, 0, 0, 0.404);
+
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            align-items: center;
+        }
+
+        h1 {
+            color: white;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            font-size: 38px;
+
+            background-image: linear-gradient(to right, rgb(162, 0, 255), rgb(74, 15, 236));
+            background-size: 100% 4px;
+            background-position: bottom;
+            background-repeat: no-repeat;
+            line-height: 60px;
+        }
+
+        label {
+            color: white;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            font-size: 18px;
+        }
+
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            align-items: left;
+            justify-content: center;
+        }
+
+        input {
+            height: 64px;
+            margin: 15px;
+            padding: 0px 25px;
+            border-radius: 10px;
+            border: none;
+            background-color: #373e49;
+            box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.212);
+            color: white;
+            font-size: 20px;
+            transition: 0.2s;
+        }
+
+        input:hover {
+            background-color: #47505f;
+        }
+
+        input:focus {
+            outline: royalblue;
+            outline-style: solid;
+            transition: 0s;
+        }
+
+        button {
+            height: 64px;
+            width: 140px;
+            border-radius: 1000px;
+            border: none;
+        }
+
+        .response {
+            color: greenyellow;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            font-size: 18px;
+        }
+
+        @media(max-width: 650px) {
+            form {
+                height: 100%;
+                width: 100%;
+            }
+        }
+    </style>
+
+    <script>
+        const submit_form = (ev) => {
+            ev.preventDefault();
+
+            let form_data = {
+                ssid: document.getElementById('rss-url').value
+            };
+
+            let xhr = new XMLHttpRequest();
+            let url = "/wifi";
+
+            xhr.open("POST", url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    console.log(xhr.responseText);
+                    document.getElementById('response').innerHTML = xhr.responseText;
+                }
+            };
+
+            xhr.send(JSON.stringify(form_data));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('submit-button').addEventListener('click', submit_form);
+        });
+    </script>
+</head>
+
+<body>
+    <form method="post" id="sampleform" class="center-item">
+        <h1>RSS Einstellungen</h1>
+        <div class="form-row">
+            <label for="rss-url">RSS URL:</label>
+            <input type="text" id="rss-url" name="rss-url" required>
+        </div>
+        <div class="form-row">
+            <button id="submit-button">Speichern</button>
+        </div>
+        <p class="response" id="response"></p>
+    </form>
+</body>
+
+</html>

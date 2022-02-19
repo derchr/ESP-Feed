@@ -26,7 +26,7 @@ experimental = ["esp-idf-svc/experimental", "esp-idf-hal/experimental", "embedde
 anyhow = { version = "1.0", features = ["backtrace"] }
 log = "0.4"
 esp-idf-sys = { version = "0.30", features = ["binstart"] }
-esp-idf-svc = "0.36"
+esp-idf-svc = { git = "https://github.com/derchr/esp-idf-svc", branch = "develop" }
 embedded-svc = "0.16"
 esp-idf-hal = "0.32"
 embedded-hal = "0.2.6"

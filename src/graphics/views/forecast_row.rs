@@ -1,16 +1,28 @@
 use crate::{
     datetime,
     graphics::{pages::WeatherPageType, views::forecast::Forecast},
-    weather::WeatherController,
-    weather::WeatherReport, // TODO Weathercontroller forecast ?
+    weather::{WeatherController, WeatherReport},
 };
 use embedded_graphics::{
     draw_target::DrawTarget, pixelcolor::BinaryColor, prelude::*, primitives::Rectangle,
 };
-use embedded_layout::prelude::*;
+use embedded_layout::{
+    align::vertical::Bottom,
+    layout::linear::{FixedMargin, Horizontal, LinearLayout},
+    prelude::*,
+};
+
+type LayoutOrientation = Horizontal<Bottom, FixedMargin>;
+type Layout<'a> = LinearLayout<
+    LayoutOrientation,
+    Link<
+        Forecast<'a>,
+        Link<Forecast<'a>, Link<Forecast<'a>, Link<Forecast<'a>, Chain<Forecast<'a>>>>>,
+    >,
+>;
 
 pub struct ForecastRow<'a> {
-    forecast_widgets: [Forecast<'a>; 5],
+    layout: Layout<'a>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -49,15 +61,23 @@ impl<'a> ForecastRow<'a> {
             Forecast::new(icon, time, temp)
         });
 
-        Self { forecast_widgets }
+        let layout = LinearLayout::horizontal(
+            Chain::new(forecast_widgets[0].clone())
+                .append(forecast_widgets[1].clone())
+                .append(forecast_widgets[2].clone())
+                .append(forecast_widgets[3].clone())
+                .append(forecast_widgets[4].clone()),
+        )
+        .with_spacing(FixedMargin(-1))
+        .arrange();
+
+        Self { layout }
     }
 }
 
 impl<'a> View for ForecastRow<'a> {
     fn translate_impl(&mut self, by: Point) {
-        self.forecast_widgets.iter_mut().for_each(|w| {
-            w.translate_mut(by);
-        });
+        self.layout.translate_mut(by);
     }
 
     fn bounds(&self) -> Rectangle {
@@ -67,10 +87,7 @@ impl<'a> View for ForecastRow<'a> {
 
 impl<'a> Dimensions for ForecastRow<'a> {
     fn bounding_box(&self) -> Rectangle {
-        let size = self.forecast_widgets.len();
-        self.forecast_widgets[0]
-            .bounds()
-            .enveloping(&self.forecast_widgets[size].bounds())
+        self.layout.bounds()
     }
 }
 
@@ -79,10 +96,6 @@ impl<'a> Drawable for ForecastRow<'a> {
     type Output = ();
 
     fn draw<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D) -> Result<(), D::Error> {
-        for w in self.forecast_widgets.iter() {
-            w.draw(target)?;
-        }
-
-        Ok(())
+        self.layout.draw(target)
     }
 }
