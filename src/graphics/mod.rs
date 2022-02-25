@@ -33,7 +33,7 @@ pub fn draw_pages(
     update_page_rx: Receiver<()>,
 ) -> Result<()> {
     loop {
-        let _ = update_page_rx.recv_timeout(Duration::from_secs(60));
+        let _ = update_page_rx.recv_timeout(Duration::from_secs(600));
 
         display
             .epd2in13
@@ -129,19 +129,15 @@ pub fn draw_pages(
             let mut page_draw_target = display.display.cropped(&page_area);
             page.draw(&mut page_draw_target, &state).unwrap();
         }
-        display.epd2in13.update_frame(
+
+        display.epd2in13.update_and_display_frame(
             &mut display.master,
             display.display.buffer(),
             &mut display.delay,
         )?;
-        display
-            .epd2in13
-            .display_frame(&mut display.master, &mut display.delay)?;
+
         display
             .epd2in13
             .sleep(&mut display.master, &mut display.delay)?;
-
-        // std::thread::sleep(std::time::Duration::from_secs(0xFFFF_FFFF_FFFF_FFFF));
-        // std::thread::sleep(Duration::from_millis(15000));
     }
 }

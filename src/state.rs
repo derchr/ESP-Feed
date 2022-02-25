@@ -21,14 +21,16 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(setup_mode: bool, wifi_config: Option<WifiConfig>, location: String) -> Self {
+    pub fn new(
+        setup_mode: bool,
+        wifi_config: Option<WifiConfig>,
+        location: String,
+        start_page: PageType,
+    ) -> Self {
         let page = if setup_mode {
             ConfigPage.into()
         } else {
-            // FeedPage.into()
-            // ExamplePage.into()
-            // StockPage.into()
-            WeatherPage(WeatherPageType::Hourly).into()
+            start_page
         };
 
         Self {

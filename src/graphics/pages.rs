@@ -21,41 +21,47 @@ use embedded_layout::{
     layout::linear::{spacing::DistributeFill, FixedMargin, LinearLayout},
     prelude::*,
 };
-
 use embedded_text::{style::TextBoxStyleBuilder, TextBox};
 use enum_dispatch::enum_dispatch;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use tinytga::DynamicTga;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum WeatherPageType {
     Hourly,
     Daily,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FeedPage;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WeatherPage(pub WeatherPageType);
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ExamplePage;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConfigPage;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StockPage;
 
 #[enum_dispatch(Page)]
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PageType {
     FeedPage,
     WeatherPage,
     StockPage,
     ExamplePage,
     ConfigPage,
+}
+
+impl Default for PageType {
+    fn default() -> Self {
+        WeatherPage(WeatherPageType::Hourly).into()
+    }
 }
 
 #[enum_dispatch]
@@ -119,11 +125,11 @@ impl Page for StockPage {
 
         if let Some(stock_data) = state.stock_controller.stock_data() {
             let curve = Curve::from_data(stock_data);
-            const BORDER: u32 = 15;
+            const BORDER: u32 = 12;
 
             let bounds = &target.bounding_box();
 
-            let top_left = Point::new(BORDER as _, BORDER as _);
+            let top_left = Point::new(BORDER as _, BORDER as _) + Point::new(5, 0);
             let bottom_right = Point::new(
                 (bounds.size.width - BORDER) as _,
                 (bounds.size.height - BORDER) as _,

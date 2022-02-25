@@ -3,7 +3,10 @@ use embedded_hal::digital::v2::InputPin;
 use esp_feed::{
     command::Command,
     datetime, graphics,
-    graphics::display,
+    graphics::{
+        display,
+        pages::{ConfigPage, PageType},
+    },
     interrupt,
     nvs::NvsController,
     server::{self, PersonalData, WifiData},
@@ -65,6 +68,16 @@ fn main() -> Result<()> {
         .map(|data| data.location)
         .unwrap_or_default();
 
+    let start_page = {
+        let page = nvs_controller.get("last_page").unwrap_or_default();
+
+        if page == PageType::ConfigPage(ConfigPage) {
+            Default::default()
+        } else {
+            page
+        }
+    };
+
     let (command_tx, command_rx) = mpsc::channel();
     let (update_page_tx, update_page_rx) = mpsc::channel();
 
@@ -72,6 +85,7 @@ fn main() -> Result<()> {
         setup_mode,
         wifi_config.clone(),
         location,
+        start_page,
     )));
 
     let spi3 = peripherals.spi3;
@@ -111,11 +125,8 @@ fn main() -> Result<()> {
 
     {
         let controller = &mut state.lock().unwrap().feed_controller;
-        let urls = [
-            url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url"),
-            // url::Url::parse("https://www.uni-kl.de/pr-marketing/studium/rss.xml")
-            //     .expect("Invalid Url"),
-        ];
+        let urls =
+            [url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url")];
         controller.urls_mut().extend_from_slice(&urls);
     }
 
@@ -153,7 +164,7 @@ fn main() -> Result<()> {
                     }
                 }
 
-                std::thread::sleep(std::time::Duration::from_secs(300));
+                std::thread::sleep(std::time::Duration::from_secs(550));
             }
         }
     };
@@ -169,7 +180,11 @@ fn main() -> Result<()> {
     loop {
         match command_rx.recv_timeout(std::time::Duration::from_millis(100)) {
             Ok(Command::SwitchPage) => {
-                state.lock().unwrap().next_page();
+                let mut state = state.lock().unwrap();
+                state.next_page();
+
+                nvs_controller.store("last_page", &state.page)?;
+
                 update_page_tx.send(())?;
             }
             Ok(Command::SavePersonalConfig(ref config)) => {

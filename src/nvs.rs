@@ -4,6 +4,7 @@ use crate::server::ConfigData;
 use anyhow::{Context, Result};
 use embedded_svc::storage::Storage;
 use esp_idf_svc::{nvs::EspDefaultNvs, nvs_storage::EspNvsStorage};
+use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
 
 pub struct NvsController {
@@ -41,7 +42,10 @@ impl NvsController {
         Ok(config)
     }
 
-    pub fn get_string(&self, key: &str) -> Result<String> {
+    pub fn get<T>(&self, key: &str) -> Result<T>
+    where
+        T: DeserializeOwned,
+    {
         let value = self
             .storage
             .get(key)?
@@ -50,13 +54,13 @@ impl NvsController {
         Ok(value)
     }
 
-    pub fn store_string(&mut self, key: &str, value: &str) -> Result<()> {
-        self.storage.put(key, &value.to_string()).with_context(|| {
-            format!(
-                "Could not store key \"{}\" with value \"{}\" into NVS",
-                key, value
-            )
-        })?;
+    pub fn store<T>(&mut self, key: &str, value: &T) -> Result<()>
+    where
+        T: Serialize,
+    {
+        self.storage
+            .put(key, value)
+            .with_context(|| format!("Could not store key \"{}\" into NVS", key))?;
 
         Ok(())
     }
