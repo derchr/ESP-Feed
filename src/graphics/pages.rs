@@ -104,7 +104,6 @@ impl Page for FeedPage {
             .with_spacing(FixedMargin(3))
             .arrange()
             .align_to(&target.bounding_box(), horizontal::Left, vertical::Top)
-            .translate(Point::new(1, 0)) // TODO fix border bug
             .draw(target)?;
 
         Ok(())
@@ -173,7 +172,6 @@ impl Page for WeatherPage {
 
             let forecast_row = ForecastRow::new(&state.weather_controller, self.0.into())
                 .align_to(&target.bounding_box(), horizontal::Left, vertical::Bottom)
-                .translate(Point::new(1, 0)) // TODO: Remove when border bug is fixed
                 .translate(Point::new(-1, 1));
 
             let forecast_row_top_right = forecast_row.bounding_box().top_left
@@ -209,7 +207,6 @@ impl Page for WeatherPage {
                     .with_spacing(FixedMargin(1))
                     .arrange()
                     .align_to(&current_layout_box, horizontal::Left, vertical::Center)
-                    .translate(Point::new(1, 1)) // TODO: Remove when border bug is fixed
                     .translate(Point::new(8, 0));
 
             forecast_row.draw(target)?;

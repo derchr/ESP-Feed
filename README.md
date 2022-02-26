@@ -8,6 +8,9 @@ Author: Fatkhul Karim (https://www.iconfinder.com/fatkhulkarim)
 License: Creative Commons (Attribution 3.0 Unported) (http://creativecommons.org/licenses/by/3.0/)  
 Download date: 2022-01-25  
 Changes that were made: Changed colors to pure black.
+- Debian icon.  
+Source: https://www.debian.org/logos/  
+License: Creative Commons Attribution-ShareAlike 3.0 Unported License (https://creativecommons.org/licenses/by-sa/3.0/)
 
 ### Useful links:
 - [SSD1680 Driver Datasheet](https://v4.cecdn.yun300.cn/100001_1909185147/SSD1680.pdf)

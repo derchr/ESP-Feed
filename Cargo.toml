@@ -38,7 +38,7 @@ embedded-layout-macros = "0.1"
 embedded-text = "0.5"
 embedded-plots = { git = "https://github.com/derchr/embedded-plots", branch = "work/update-fixes" }
 tinytga = "0.4"
-epd-waveshare = { path = "epd-waveshare" }
+epd-waveshare = { git = "https://github.com/derchr/epd-waveshare", branch = "work/fix-ttgo" }
 url = "2.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

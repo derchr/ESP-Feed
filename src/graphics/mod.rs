@@ -98,7 +98,6 @@ pub fn draw_pages(
                     text_style,
                     text_box_left_style,
                 )
-                .translate(Point::new(1, 0)) // TODO remove border bug
                 .draw(display.display.as_mut())?;
                 TextBox::with_textbox_style(
                     &time,

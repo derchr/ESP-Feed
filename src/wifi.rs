@@ -1,9 +1,12 @@
 //! Setup the wifi connection and wifi access point.
 
 use anyhow::*;
-use embedded_svc::wifi::{
-    AccessPointConfiguration, ApIpStatus, ApStatus, AuthMethod, ClientConfiguration,
-    ClientConnectionStatus, ClientIpStatus, ClientStatus, Configuration, Status, Wifi,
+use embedded_svc::{
+    ipv4::DHCPClientSettings,
+    wifi::{
+        AccessPointConfiguration, ApIpStatus, ApStatus, AuthMethod, ClientConfiguration,
+        ClientConnectionStatus, ClientIpStatus, ClientStatus, Configuration, Status, Wifi,
+    },
 };
 use esp_idf_svc::{
     netif::EspNetifStack, nvs::EspDefaultNvs, sysloop::EspSysLoopStack, wifi::EspWifi,
@@ -50,6 +53,11 @@ pub fn connect(
         ssid,
         password: pass,
         channel,
+        ip_conf: Some(embedded_svc::ipv4::ClientConfiguration::DHCP(
+            DHCPClientSettings {
+                hostname: Some("esp-feed".into()),
+            },
+        )),
         ..Default::default()
     });
 
