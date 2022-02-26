@@ -117,11 +117,11 @@
             ev.preventDefault();
 
             let form_data = {
-                ssid: document.getElementById('rss-url').value
+                url: document.getElementById('rss-url').value
             };
 
             let xhr = new XMLHttpRequest();
-            let url = "/wifi";
+            let url = "/rss";
 
             xhr.open("POST", url, true);
             xhr.setRequestHeader("Content-Type", "application/json");

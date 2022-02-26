@@ -138,7 +138,16 @@ impl Page for StockPage {
                 .into_drawable(top_left, bottom_right)
                 .set_color(BinaryColor::On);
 
+            let symbol_text = Text::new(
+                &state.stock_controller.symbol,
+                Point::zero(),
+                style::normal_text(),
+            )
+            .align_to(&target.bounding_box(), horizontal::Center, vertical::Top)
+            .translate(Point::new(-10, 10));
+
             plot.draw(target)?;
+            symbol_text.draw(target)?;
         }
 
         Ok(())

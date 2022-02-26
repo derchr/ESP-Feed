@@ -26,6 +26,7 @@ impl State {
         wifi_config: Option<WifiConfig>,
         location: String,
         start_page: PageType,
+        stock_symbol: &str
     ) -> Self {
         let page = if setup_mode {
             ConfigPage.into()
@@ -36,7 +37,7 @@ impl State {
         Self {
             feed_controller: FeedController::new(),
             weather_controller: WeatherController::new(),
-            stock_controller: StockController::new(),
+            stock_controller: StockController::new(stock_symbol),
             setup_mode,
             page,
             wifi: wifi_config,

@@ -140,7 +140,12 @@ pub fn httpd(command_tx: Sender<Command>) -> Result<Server> {
             "/personal",
             command_tx.clone(),
         ))?
-        .handler(settings_post_handler::<WifiData>("/wifi", command_tx))?;
+        .handler(settings_post_handler::<WifiData>(
+            "/wifi",
+            command_tx.clone(),
+        ))?
+        .handler(settings_post_handler::<RssData>("/rss", command_tx.clone()))?
+        .handler(settings_post_handler::<StockData>("/stock", command_tx))?;
 
     server.start(&Default::default())
 }

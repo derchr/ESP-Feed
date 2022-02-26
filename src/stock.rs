@@ -18,12 +18,9 @@ use std::{collections::HashMap, fmt, hash::Hash, io::BufReader, marker::PhantomD
 const ALPHAVANTAGE_API_KEY: &str = env!("ALPHAVANTAGE_API_KEY");
 const NUM_ENTRIES: usize = 48;
 
-pub struct StockController(Option<[PlotPoint; NUM_ENTRIES]>);
-
-impl Default for StockController {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct StockController {
+    pub symbol: String,
+    plot_points: Option<[PlotPoint; NUM_ENTRIES]>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -85,12 +82,15 @@ where
 }
 
 impl StockController {
-    pub fn new() -> Self {
-        Self(None)
+    pub fn new(symbol: &str) -> Self {
+        Self {
+            symbol: symbol.into(),
+            plot_points: None,
+        }
     }
 
     pub fn stock_data(&self) -> Option<&[PlotPoint]> {
-        if let Some(ref data) = self.0 {
+        if let Some(ref data) = self.plot_points {
             Some(data.as_slice())
         } else {
             None
@@ -99,8 +99,8 @@ impl StockController {
 
     pub fn refresh(&mut self) -> Result<()> {
         let url = url::Url::parse(&format!(
-            "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=IBM&apikey={}",
-            ALPHAVANTAGE_API_KEY
+            "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={}&apikey={}",
+            &self.symbol, ALPHAVANTAGE_API_KEY
         ))
         .expect("Invalid Url");
 
@@ -140,7 +140,7 @@ impl StockController {
                 y: value as _,
             });
 
-        self.0 = Some(array_init::from_iter(data_iter).unwrap());
+        self.plot_points = Some(array_init::from_iter(data_iter).unwrap());
 
         Ok(())
     }

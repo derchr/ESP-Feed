@@ -117,11 +117,11 @@
             ev.preventDefault();
 
             let form_data = {
-                ssid: document.getElementById('stock-symbol').value
+                symbol: document.getElementById('stock-symbol').value
             };
 
             let xhr = new XMLHttpRequest();
-            let url = "/wifi";
+            let url = "/stock";
 
             xhr.open("POST", url, true);
             xhr.setRequestHeader("Content-Type", "application/json");

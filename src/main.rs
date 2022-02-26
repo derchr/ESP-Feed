@@ -9,7 +9,7 @@ use esp_feed::{
     },
     interrupt,
     nvs::NvsController,
-    server::{self, PersonalData, WifiData},
+    server::{self, PersonalData, RssData, StockData, WifiData},
     state,
     storage::StorageHandle,
     wifi,
@@ -63,6 +63,12 @@ fn main() -> Result<()> {
     let mut nvs_controller = NvsController::new(Arc::clone(&default_nvs))?;
     let wifi_config = nvs_controller.get_config::<WifiData>().ok().map(Into::into);
     let personal_config = nvs_controller.get_config::<PersonalData>().ok();
+    let rss_config = nvs_controller.get_config::<RssData>().ok();
+    let stock_config = nvs_controller
+        .get_config::<StockData>()
+        .unwrap_or(StockData {
+            symbol: "IBM".into(),
+        });
 
     let location = personal_config
         .map(|data| data.location)
@@ -86,6 +92,7 @@ fn main() -> Result<()> {
         wifi_config.clone(),
         location,
         start_page,
+        &stock_config.symbol
     )));
 
     let spi3 = peripherals.spi3;
@@ -125,9 +132,14 @@ fn main() -> Result<()> {
 
     {
         let controller = &mut state.lock().unwrap().feed_controller;
-        let urls =
-            [url::Url::parse("https://www.tagesschau.de/newsticker.rdf").expect("Invalid Url")];
-        controller.urls_mut().extend_from_slice(&urls);
+        let rss_data = rss_config.unwrap_or(RssData {
+            url: "https://www.tagesschau.de/newsticker.rdf".into(),
+        });
+
+        if let Ok(url) = url::Url::parse(&rss_data.url) {
+            let urls = [url];
+            controller.urls_mut().extend_from_slice(&urls);
+        }
     }
 
     let fetching_thread = {
@@ -201,6 +213,16 @@ fn main() -> Result<()> {
                 nvs_controller.store_config(config)?;
 
                 // let state = &mut state.lock().unwrap(); // TODO
+            }
+            Ok(Command::SaveRssConfig(ref config)) => {
+                info!("Save this rss config: {:?}", config);
+
+                nvs_controller.store_config(config)?;
+            }
+            Ok(Command::SaveStockConfig(ref config)) => {
+                info!("Save this stock config: {:?}", config);
+
+                nvs_controller.store_config(config)?;
             }
             Err(RecvTimeoutError::Timeout) => {
                 // Check if a button was pressed in the meanwhile.
