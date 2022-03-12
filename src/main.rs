@@ -116,36 +116,80 @@ fn main() -> Result<()> {
         let state = Arc::clone(&state);
 
         std::thread::Builder::new()
+            .name("Display".into())
             .stack_size(10240)
             .spawn(move || graphics::draw_pages(&mut display, state, update_page_rx))
             .context("Could not create display thread.")?;
     }
 
-    let _wifi = if setup_mode {
-        wifi::create_accesspoint(netif_stack, sys_loop_stack, default_nvs)?
-    } else {
-        match wifi::connect(
-            wifi_config,
+    if setup_mode {
+        let wifi = wifi::create_accesspoint(
             Arc::clone(&netif_stack),
             Arc::clone(&sys_loop_stack),
             Arc::clone(&default_nvs),
-        ) {
-            Ok(wifi) => wifi,
-            Err(_) => wifi::create_accesspoint(netif_stack, sys_loop_stack, default_nvs)?,
-        }
+        )?;
+
+        // Dont ever disconnect from the wifi.
+        std::mem::forget(wifi);
     };
+
+    if !setup_mode {
+        let (wifi_tx, wifi_rx) = mpsc::channel();
+
+        std::thread::Builder::new()
+            .name("Deep Sleep".into())
+            .stack_size(10240)
+            .spawn(move || -> Result<()> {
+                loop {
+                    let wifi = wifi::connect(
+                        wifi_config.as_ref(),
+                        Arc::clone(&netif_stack),
+                        Arc::clone(&sys_loop_stack),
+                        Arc::clone(&default_nvs),
+                    )?;
+
+                    // Notify main thread.
+                    wifi_tx.send(()).unwrap();
+
+                    std::thread::sleep(std::time::Duration::from_secs(90));
+
+                    // Gracefully shut down wifi.
+                    info!("Shutdown wifi.");
+                    drop(wifi);
+
+                    info!("Enter deep sleep now.");
+                    unsafe {
+                        esp_idf_sys::esp_deep_sleep(1800 * 1_000_000u64);
+                    }
+
+                    // NOTE: Currently the ESP crashes after deep sleep wakeup.
+                    // BUT this is not a huge problem and can be exploited to
+                    // restart the ESP which it should do anyways.
+
+                    info!("Wakeup from deep sleep.");
+                }
+            })
+            .context("Could not create deep sleep thread.")?;
+
+        // Wait until wifi connection is established.
+        wifi_rx.recv().unwrap();
+    }
 
     {
         let command_tx = command_tx.clone();
-        
-        std::thread::spawn(move || -> Result<()> {
-            let _server = server::httpd(command_tx.clone())?;
 
-            // Let the server run for 10 minutes, then shut it down.
-            std::thread::sleep(std::time::Duration::from_secs(600));
+        std::thread::Builder::new()
+            .name("Server".into())
+            .spawn(move || -> Result<()> {
+                let _server = server::httpd(command_tx.clone())?;
 
-            Ok(())
-        });
+                // Let the server run for 10 minutes, then shut it down.
+                // Note: In normal mode this actually does nothing because
+                // the deep sleep will shut it down anyways.
+                std::thread::sleep(std::time::Duration::from_secs(600));
+
+                Ok(())
+            })?;
     }
 
     let _sntp = datetime::initialize_time()?;
@@ -211,12 +255,13 @@ fn main() -> Result<()> {
     };
 
     std::thread::Builder::new()
+        .name("Feed".into())
         .stack_size(30720)
         .spawn(fetching_thread)
         .context("Could not create feed fetching thread.")?;
 
     loop {
-        match command_rx.recv_timeout(std::time::Duration::from_millis(5000)) {
+        match command_rx.recv_timeout(std::time::Duration::from_millis(750)) {
             Ok(Command::SwitchPage) => {
                 let mut state = state.lock().unwrap();
                 state.next_page();

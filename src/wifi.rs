@@ -22,7 +22,7 @@ pub struct WifiConfig {
 }
 
 pub fn connect(
-    wifi_config: Option<WifiConfig>,
+    wifi_config: Option<&WifiConfig>,
     netif_stack: Arc<EspNetifStack>,
     sys_loop_stack: Arc<EspSysLoopStack>,
     default_nvs: Arc<EspDefaultNvs>,
@@ -33,7 +33,7 @@ pub fn connect(
     let WifiConfig { ssid, pass } = wifi_config.ok_or(anyhow!("No valid wifi config."))?;
 
     let ap_info_list = wifi.scan()?;
-    let ap_info = ap_info_list.into_iter().find(|a| a.ssid == ssid);
+    let ap_info = ap_info_list.into_iter().find(|a| a.ssid == *ssid);
 
     let channel = if let Some(ap_info) = ap_info {
         info!(
@@ -50,8 +50,8 @@ pub fn connect(
     };
 
     let configuration = Configuration::Client(ClientConfiguration {
-        ssid,
-        password: pass,
+        ssid: ssid.clone(),
+        password: pass.clone(),
         channel,
         ip_conf: Some(embedded_svc::ipv4::ClientConfiguration::DHCP(
             DHCPClientSettings {

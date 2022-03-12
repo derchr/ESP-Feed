@@ -92,7 +92,24 @@ pub fn draw_pages(
                     .format(&time_format)
                     .expect("Could not format time.");
 
-                let date_battery_string = format!("{} {}mV", &date, state.battery);
+                let percentage = {
+                    // The max value is around 2700.
+                    // The min value is around 1750.
+                    // Lets use a linear conversion to percentage.
+                    // It's incorrect but it's simple.
+
+                    let mut percentage = (0.105 * state.battery as f32 - 184.21) as i16;
+                    
+                    if percentage > 100 {
+                        percentage = 100;
+                    } else if percentage < 0 {
+                        percentage = 0;
+                    }
+
+                    percentage
+                };
+
+                let date_battery_string = format!("{}  {}%", &date, percentage);
                 let date_text = TextBox::with_textbox_style(
                     &date_battery_string,
                     status_bar_area,
@@ -119,8 +136,6 @@ pub fn draw_pages(
             );
 
             location_text.draw(display.display.as_mut())?;
-
-            // TODO: Percentage
 
             let page_area = Rectangle::new(
                 Point::new(0, height),
