@@ -18,6 +18,7 @@ pub struct State {
     pub page: PageType,
     pub wifi: Option<WifiConfig>,
     pub location: String,
+    pub battery: u16,
 }
 
 impl State {
@@ -42,6 +43,7 @@ impl State {
             page,
             wifi: wifi_config,
             location,
+            battery: 0
         }
     }
 

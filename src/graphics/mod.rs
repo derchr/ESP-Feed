@@ -33,7 +33,7 @@ pub fn draw_pages(
     update_page_rx: Receiver<()>,
 ) -> Result<()> {
     loop {
-        let _ = update_page_rx.recv_timeout(Duration::from_secs(600));
+        let _ = update_page_rx.recv_timeout(Duration::from_secs(1800));
 
         display
             .epd2in13
@@ -92,29 +92,33 @@ pub fn draw_pages(
                     .format(&time_format)
                     .expect("Could not format time.");
 
-                TextBox::with_textbox_style(
-                    &date,
+                let date_battery_string = format!("{} {}mV", &date, state.battery);
+                let date_text = TextBox::with_textbox_style(
+                    &date_battery_string,
                     status_bar_area,
                     text_style,
                     text_box_left_style,
-                )
-                .draw(display.display.as_mut())?;
-                TextBox::with_textbox_style(
+                );
+
+                let time_text = TextBox::with_textbox_style(
                     &time,
                     status_bar_area,
                     text_style,
                     text_box_center_style,
-                )
-                .draw(display.display.as_mut())?;
+                );
+
+                date_text.draw(display.display.as_mut())?;
+                time_text.draw(display.display.as_mut())?;
             }
 
-            TextBox::with_textbox_style(
+            let location_text = TextBox::with_textbox_style(
                 &state.location,
                 status_bar_area,
                 text_style,
                 text_box_right_style,
-            )
-            .draw(display.display.as_mut())?;
+            );
+
+            location_text.draw(display.display.as_mut())?;
 
             // TODO: Percentage
 

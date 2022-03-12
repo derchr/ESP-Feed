@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
-use embedded_hal::digital::v2::InputPin;
+use embedded_hal::{adc::OneShot, digital::v2::InputPin};
+// use embedded_hal_alpha::adc::nb::OneShot;
 use esp_feed::{
     command::Command,
     datetime, graphics,
@@ -14,7 +15,7 @@ use esp_feed::{
     storage::StorageHandle,
     wifi,
 };
-use esp_idf_hal::{gpio::Pin, prelude::*};
+use esp_idf_hal::{adc::PoweredAdc, gpio::Pin, prelude::*};
 use esp_idf_svc::{
     log::EspLogger, netif::EspNetifStack, nvs::EspDefaultNvs, sysloop::EspSysLoopStack,
 };
@@ -25,12 +26,14 @@ use std::sync::{
     Arc, Mutex,
 };
 
+// #[allow(dead_code)]
 fn setup_logging() {
     EspLogger::initialize_default();
 
     // In release build the CONFIG_LOG_MAXIMUM_LEVEL should be set to Warn.
     // TODO: Still doesn't work.
-    EspLogger.set_target_level("esp_feed", LevelFilter::Info);
+    // EspLogger.set_target_level("esp_feed", LevelFilter::Info);
+    EspLogger.set_target_level("*", LevelFilter::Error);
 
     // No longer working with ESP-IDF 4.3.1+
     // std::env::set_var("RUST_BACKTRACE", "1");
@@ -40,6 +43,7 @@ fn main() -> Result<()> {
     // Temporary. Will disappear once ESP-IDF 4.4 is released, but for now it is necessary to call this function once,
     // or else some patches to the runtime implemented by esp-idf-sys might not link properly.
     esp_idf_sys::link_patches();
+
     setup_logging();
 
     // Refer to "ECO_and_Workarounds_for_Bugs_in_ESP32" section 3.11.
@@ -50,6 +54,10 @@ fn main() -> Result<()> {
 
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
+
+    let vbat_pin = pins.gpio35.into_analog_atten_11db().unwrap();
+    let vbat_adc = PoweredAdc::new(peripherals.adc1, Default::default()).unwrap();
+    let mut vbat = (vbat_pin, vbat_adc);
 
     let button_pin = pins.gpio39.into_input().unwrap();
     let setup_mode = button_pin.is_low().unwrap();
@@ -92,7 +100,7 @@ fn main() -> Result<()> {
         wifi_config.clone(),
         location,
         start_page,
-        &stock_config.symbol
+        &stock_config.symbol,
     )));
 
     let spi3 = peripherals.spi3;
@@ -127,7 +135,19 @@ fn main() -> Result<()> {
         }
     };
 
-    let _server = server::httpd(command_tx.clone())?;
+    {
+        let command_tx = command_tx.clone();
+        
+        std::thread::spawn(move || -> Result<()> {
+            let _server = server::httpd(command_tx.clone())?;
+
+            // Let the server run for 10 minutes, then shut it down.
+            std::thread::sleep(std::time::Duration::from_secs(600));
+
+            Ok(())
+        });
+    }
+
     let _sntp = datetime::initialize_time()?;
 
     {
@@ -144,6 +164,7 @@ fn main() -> Result<()> {
 
     let fetching_thread = {
         let state = Arc::clone(&state);
+        let update_page_tx = update_page_tx.clone();
 
         move || {
             fn fetch_data(state: &mut state::State) -> Result<()> {
@@ -174,9 +195,17 @@ fn main() -> Result<()> {
                     if let Err(e) = fetch_data(state) {
                         log::warn!("{:?}", e.context("Could not retrieve new data."));
                     }
+
+                    // Get battery voltage
+                    if let Ok(val) = vbat.1.read(&mut vbat.0) {
+                        state.battery = val * 2; // 1/2 Voltage divider
+                    }
                 }
 
-                std::thread::sleep(std::time::Duration::from_secs(550));
+                // Update page to show new data.
+                update_page_tx.send(()).ok();
+
+                std::thread::sleep(std::time::Duration::from_secs(1200));
             }
         }
     };
@@ -186,11 +215,8 @@ fn main() -> Result<()> {
         .spawn(fetching_thread)
         .context("Could not create feed fetching thread.")?;
 
-    // Update page to show new data.
-    update_page_tx.send(())?;
-
     loop {
-        match command_rx.recv_timeout(std::time::Duration::from_millis(100)) {
+        match command_rx.recv_timeout(std::time::Duration::from_millis(5000)) {
             Ok(Command::SwitchPage) => {
                 let mut state = state.lock().unwrap();
                 state.next_page();
@@ -229,13 +255,13 @@ fn main() -> Result<()> {
                 let btn1_pressed = {
                     let mut pressed = button1_state.lock();
                     let old_pressed = *pressed;
-                    if old_pressed {
-                        *pressed = false;
+                    if old_pressed > 0 {
+                        *pressed = 0;
                     }
                     old_pressed
                 };
 
-                if btn1_pressed {
+                for _ in 0..btn1_pressed {
                     command_tx.send(Command::SwitchPage)?;
                 }
             }

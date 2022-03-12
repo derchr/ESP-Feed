@@ -26,8 +26,8 @@ pub fn add_pin_interrupt(pin: i32, handler: impl FnMut() + 'static) {
     add_isr_handler(pin, handler);
 }
 
-pub fn button_debounce_handler() -> (impl FnMut() + 'static, Arc<Mutex<bool>>) {
-    let button_state = Arc::new(esp_idf_hal::interrupt::Mutex::new(false));
+pub fn button_debounce_handler() -> (impl FnMut() + 'static, Arc<Mutex<u8>>) {
+    let button_state = Arc::new(esp_idf_hal::interrupt::Mutex::new(0u8));
     let button_state_cloned = Arc::clone(&button_state);
     let mut last_tick = 0;
     let mut last_pressed = false;
@@ -51,13 +51,13 @@ pub fn button_debounce_handler() -> (impl FnMut() + 'static, Arc<Mutex<bool>>) {
             last_pressed = true;
         }
 
-        *pressed = true;
+        *pressed += 1;
     };
 
     (closure, button_state)
 }
 
-pub fn register_button_interrupt(pin: i32) -> Arc<Mutex<bool>> {
+pub fn register_button_interrupt(pin: i32) -> Arc<Mutex<u8>> {
     let (button1_handler, button1_state) = button_debounce_handler();
     add_pin_interrupt(pin, button1_handler);
     button1_state
