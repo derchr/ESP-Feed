@@ -1,6 +1,12 @@
 ## ESP-Feed
 A small feed device written in Rust that can show news through RSS-Feeds, weather using the OpenWeather API, stock market data and more based on the ESP32 microcontroller.
 
+### Images
+![Hourly Forecast](doc/hourly.jpg "Hourly Forecast")
+![Daily Forecast](doc/daily.jpg "Daily Forecast")
+![News](doc/news.jpg "News")
+![Stock](doc/stock.jpg "Stock")
+
 ### Copyright Notices
 - This project uses vector images from Fatkhul Karim.  
 Iconset: Weather (https://www.iconfinder.com/iconsets/weather-line-19)  

@@ -181,7 +181,7 @@ fn main() -> Result<()> {
         std::thread::Builder::new()
             .name("Server".into())
             .spawn(move || -> Result<()> {
-                let _server = server::httpd(command_tx.clone())?;
+                let _server = server::httpd(command_tx)?;
 
                 // Let the server run for 10 minutes, then shut it down.
                 // Note: In normal mode this actually does nothing because
